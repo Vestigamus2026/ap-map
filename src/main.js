@@ -153,7 +153,7 @@ async function search({ query, point, target }) {
     saveLastSearch(storage, {
       start: state.start,
       destination: state.destination,
-      label: result.target.location ? formatLocation(result.target.location) : formatCoordinates(state.destination),
+      label: (result.target.location && formatLocation(result.target.location)) || formatCoordinates(state.destination),
       shortest: (state.settings.route_shortest && result.shortest?.points) || null,
       fastest: (state.settings.route_fastest && result.fastest?.points) || null,
     });

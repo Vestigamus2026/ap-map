@@ -114,7 +114,8 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
     toCanvas() {
       const layers = [...map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer')].filter((c) => c.width > 0);
       const [w, h] = map.getSize();
-      const scale = layers.length ? layers[0].width / layers[0].getBoundingClientRect().width : 1;
+      const scale = window.devicePixelRatio || 1;
+      const viewport = map.getViewport().getBoundingClientRect();
       const out = document.createElement('canvas');
       out.width = Math.round(w * scale);
       out.height = Math.round(h * scale);
@@ -122,7 +123,9 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
       for (const canvas of layers) {
         const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
         ctx.globalAlpha = opacity === '' ? 1 : Number(opacity);
-        const m = canvas.style.transform.match(/^matrix\(([^(]*)\)$/)?.[1].split(',').map(Number) || [1, 0, 0, 1, 0, 0];
+        const r = canvas.getBoundingClientRect();
+        const m = canvas.style.transform.match(/^matrix\(([^(]*)\)$/)?.[1].split(',').map(Number) ||
+          [r.width / canvas.width, 0, 0, r.height / canvas.height, r.left - viewport.left, r.top - viewport.top];
         ctx.setTransform(...m.map((v) => v * scale));
         ctx.drawImage(canvas, 0, 0);
       }

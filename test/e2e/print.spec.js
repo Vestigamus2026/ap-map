@@ -89,6 +89,52 @@ test('saves the sheet as a PNG with paper-shaped dimensions', async ({ page }) =
   expect(mapPixels).not.toEqual(['229,227,223,255']);
 });
 
+test('a coordinate search labels the destination with its coordinates', async ({ page }) => {
+  await mockServices(page);
+  await page.goto('/#search');
+  await page.fill('#location', '52.34 14.55');
+  await page.click('#submitplace');
+  await expect(page.locator('#result')).toContainText('Schnellste Verbindung:');
+  await page.goto('/print.html');
+  await expect(page.locator('#legend')).toContainText(/Ziel: \S*52[.,]34/);
+});
+
+const pngGrid = (page) =>
+  page.evaluate(async () => {
+    const [blob] = await Promise.all([
+      new Promise((resolve) => {
+        const orig = URL.createObjectURL;
+        URL.createObjectURL = (b) => { resolve(b); return orig(b); };
+      }),
+      document.getElementById('png').click(),
+    ]);
+    const img = await createImageBitmap(blob);
+    const c = new OffscreenCanvas(img.width, img.height);
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const grid = [];
+    for (let x = 0.1; x < 0.95; x += 0.04) {
+      for (let y = 0.15; y < 0.8; y += 0.04) grid.push([...ctx.getImageData(Math.round(img.width * x), Math.round(img.height * y), 1, 1).data]);
+    }
+    return { width: img.width, grid };
+  });
+
+test('the PNG map on a high-density screen matches the normal one', async ({ browser }) => {
+  const shots = [];
+  for (const deviceScaleFactor of [1, 2]) {
+    const context = await browser.newContext({ deviceScaleFactor, acceptDownloads: true });
+    const page = await context.newPage();
+    await mockServices(page);
+    await page.goto('/print.html');
+    await expect(page.locator('#printmap canvas').first()).toBeVisible();
+    shots.push(await pngGrid(page));
+    await context.close();
+  }
+  expect(Math.abs(shots[1].width - shots[0].width * 2)).toBeLessThanOrEqual(2);
+  const same = shots[0].grid.filter((p, i) => p.every((v, j) => Math.abs(v - shots[1].grid[i][j]) < 25)).length;
+  expect(same / shots[0].grid.length).toBeGreaterThan(0.9);
+});
+
 test('the print button opens the print dialog after the map is drawn', async ({ page }) => {
   await mockServices(page);
   await page.addInitScript(() => {
