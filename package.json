@@ -1,0 +1,24 @@
+{
+  "name": "ap-map",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Gebietskarte mit Zonen, Adresssuche, Routing und Autobahnkilometrierung",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "ol": "^10.11.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49",
+    "jsdom": "^25.0.1",
+    "vite": "^6.4.5",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,273 +1,151 @@
 <!doctype html>
-<html>
-	<head>
-		<meta charset="UTF-8" />
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Gebietskarte</title>
+    <meta name="description" content="Gebietskarte mit Zonen und Suchfunktionen und einfachem Routing" />
+    <link rel="icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <section id="show_map" class="page">
+        <header class="toolbar">
+          <h1>Karte</h1>
+          <a href="#search" class="button">Suche/ Info</a>
+        </header>
+        <div id="map" class="map"></div>
+      </section>
 
-		<title></title>
-		<meta name="description" content="Gebietskarte mit Zonen und Suchfunktionen und einfachem Routing">
-		<link rel="apple-touch-icon" href="apple-touch-icon.png">
-		<style type="text/css" media="screen">
-			@import "css/jqt/themes/css/apple.min.css";
-		</style>
+      <section id="search" class="page">
+        <header class="toolbar gpson">
+          <a href="#show_map" class="back">Karte</a>
+          <h1>Suche / Info</h1>
+          <a href="#gpstools" class="button">GPS</a>
+        </header>
+        <header class="toolbar gpsoff">
+          <a href="#show_map" class="back">Karte</a>
+          <h1>Suche / Info</h1>
+          <a href="#settings" class="button">Einstellungen</a>
+        </header>
+        <div class="scroll">
+          <form id="placeform" action="#">
+            <h2><img src="img/finish_flag.png" alt="" /><label for="location">Zieladresse eingeben:</label></h2>
+            <ul class="edit rounded">
+              <li>
+                <input type="text" name="location" id="location" autocomplete="off"
+                  placeholder="Hier eingeben (Nr. Straße, Ort / Straße, PLZ, Ort / Koordinaten usw.)" />
+              </li>
+              <li><button type="submit" class="blueButton" id="submitplace">Absenden</button></li>
+            </ul>
+          </form>
+          <form id="kmform" action="#">
+            <h2><img src="img/autobahn.png" alt="" /><label for="km">Autobahnkilometrierung:</label></h2>
+            <ul class="edit rounded">
+              <li>
+                <select id="bab" aria-label="Autobahn"></select>
+                <select id="bab_sub" aria-label="Abschnitt"></select>
+              </li>
+              <li>
+                <input type="text" inputmode="decimal" name="km" id="km"
+                  placeholder="km eingeben (z. B. 5.5 oder 5,5)" />
+                <button type="submit" class="blueButton" id="submitbab">Kilometer suchen</button>
+              </li>
+            </ul>
+          </form>
+          <h2>Ergebnisse</h2>
+          <ul class="rounded" id="result"></ul>
+        </div>
+      </section>
 
-		<script src="js/jquery/jquery-1.7.min.js" type="application/x-javascript" charset="utf-8"></script>
-		<script src="js/jqt/jqt.min.js" type="application/x-javascript" charset="utf-8"></script>
-		<script src="js/jqt/jqtouch-jquery.min.js" type="application/x-javascript" charset="utf-8"></script>
+      <section id="gpstools" class="page">
+        <header class="toolbar">
+          <a href="#search" class="back">Suche/...</a>
+          <h1>GPS Tools</h1>
+          <a href="#settings" class="button">Einstellungen</a>
+        </header>
+        <div class="scroll">
+          <ul class="rounded">
+            <li>
+              <button type="button" id="gps_setpos" class="blueButton"><img src="img/marker_start.png" alt="" /> Start setzen (von hier aus rechnen)</button>
+              <button type="button" id="gps_getpos" class="blueButton"><img src="img/finish_flag.png" alt="" /> Ziel setzen (diesen Punkt nachschlagen)</button>
+              <button type="button" id="gps_follow" class="blueButton"><img src="img/marker_pos.png" alt="" /> Verfolgen (aktuelle Positionen anzeigen)</button>
+              <button type="button" id="gps_follow0" class="greenButton" hidden disabled>Das Gerät wird nachgeführt...</button>
+            </li>
+            <li><button type="button" id="gps_cancel" class="grayButton" hidden>GPS Operation abbrechen</button></li>
+            <li><button type="button" id="gps_reset" class="grayButton">Tracking aus und alle Positionen zurücksetzen</button></li>
+          </ul>
+          <h2>Infos</h2>
+          <ul id="gpsinfo" class="rounded"></ul>
+        </div>
+      </section>
 
-		<script type="text/javascript" charset="utf-8">
-			var jQT = new $.jQTouch({
-				icon : 'apple-touch-icon.png',
-				addGlossToIcon : false,
-				startupScreen : 'jqt_startup.png',
-				statusBar : 'black'
-			});
+      <section id="settings" class="page">
+        <header class="toolbar gpson">
+          <a href="#gpstools" class="back">GPS</a>
+          <h1>Einstellungen</h1>
+          <a href="#about" class="button">Kredits</a>
+        </header>
+        <header class="toolbar gpsoff">
+          <a href="#search" class="back">Suche</a>
+          <h1>Einstellungen</h1>
+          <a href="#about" class="button">Kredits</a>
+        </header>
+        <div class="scroll">
+          <form id="settingsform" action="#">
+            <h2>Berechnungen anpassen</h2>
+            <ul class="edit rounded">
+              <li>
+                <label class="switch"><span>Kürzeste Route ermitteln?</span><input id="shortest" type="checkbox" /></label>
+                <ul class="edit rounded" id="onlyifshortest">
+                  <li><label class="switch"><span>Kürzeste Route einzeichnen?</span><input id="route_shortest" type="checkbox" /></label></li>
+                  <li><label class="switch"><span>Bei kürzester Route weitergehende Entfernung zu Zone 3 ermitteln?</span><input id="overhead_shortest" type="checkbox" /></label></li>
+                </ul>
+              </li>
+              <li>
+                <label class="switch"><span>Schnellste Route ermitteln?</span><input id="fastest" type="checkbox" /></label>
+                <ul class="edit rounded" id="onlyiffastest">
+                  <li><label class="switch"><span>Schnellste Route einzeichnen?</span><input id="route_fastest" type="checkbox" /></label></li>
+                  <li><label class="switch"><span>Bei schnellster Route weitergehende Entfernung zu Zone 3 ermitteln?</span><input id="overhead_fastest" type="checkbox" /></label></li>
+                </ul>
+              </li>
+              <li><label class="switch"><span>Minimale Entfernung zu Zone 3 ermitteln (Luftlinie)?</span><input id="closest" type="checkbox" /></label></li>
+            </ul>
+            <h2>Ausgaben anpassen</h2>
+            <ul class="edit rounded">
+              <li><label class="switch"><span>Zeige Adressdetails?</span><input id="details" type="checkbox" /></label></li>
+              <li><label class="switch"><span>Zeige Koordinaten?</span><input id="show_coordinaten" type="checkbox" /></label></li>
+              <li><label class="switch"><span>Zeige ungefähre Fahrzeiten?</span><input id="show_times" type="checkbox" /></label></li>
+              <li><label class="switch"><span>Zeige Schnittpunkte mit Zone 3?</span><input id="show_endpoints" type="checkbox" /></label></li>
+              <li><label class="switch"><span>Zeige Autobahn-Kilometrierung?</span><input id="show_bab" type="checkbox" /></label></li>
+              <li><label class="switch"><span>Zeige GPS Tool?</span><input id="show_gps" type="checkbox" /></label></li>
+            </ul>
+          </form>
+        </div>
+      </section>
 
-			$(function() {
-				// Custom Javascript (onReady)
-			});
-		</script>
-		<style type="text/css" media="screen">
-			/* Custom Style */
-		</style>
-		<script src="js/settings.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/tools.js" type="text/javascript" charset="utf-8"></script>
-
-		<link rel="stylesheet" href="css/ol/ol.css" type="text/css">
-		<script src="js/ol/ol.js" type="text/javascript"></script>
-
-		<link rel="stylesheet" href="css/north.css">
-		<link rel="stylesheet" href="css/ol_jqt_fix.css">
-		<link rel="stylesheet" href="css/gps.css">
-		<link rel="stylesheet" type="text/css" href="css/print.css" media="print" />
-
-		<script src="js/data/kroll.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/karte.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/dist.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/data/bab-data.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/bab.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/mq.js" type="text/javascript" charset="utf-8"></script>
-		<script src="js/gpstool.js" type="text/javascript" charset="utf-8"></script>
-
-	</head>
-	<body>
-		<div id="jqt">
-			<div id="show_map" class="current">
-				<div class="toolbar">
-					<h1>Karte</h1>
-					<a href="#search" class="button flipright">Suche/ Info</a>
-				</div>
-				<div class="fullscreen">
-					<div id="map" class="map"></div>
-				</div>
-			</div>
-			<div id="search">
-				<div class="toolbar gpson">
-					<h1>Suche / Info</h1>
-					<a href="#" class="back">&nbsp; &nbsp; Karte</a>
-					<a href="#gpstools" class="button flipright">GPS</a>
-				</div>
-				<div class="toolbar gpsoff">
-					<h1>Suche / Info</h1>
-					<a href="#" class="back">&nbsp; &nbsp; Karte</a>
-					<a href="#settings" class="button flipright">Einstellungen</a>
-				</div>
-				<div class="scroll">
-					<form action="#" method="get">
-						<h2><img src="img/finish_flag.png" style="margin-right: 5px;"/><label for="location">Zieladresse eingeben:</label></h2>
-						<ul class="edit rounded">
-							<li >
-								<input type="text" name="location" placeholder="Hier eingeben (Nr. Straße, Ort, Bundesland, DE / Straße, PLZ, Ort / Koordinaten usw.)" id="location" value=""/>
-							</li>
-							<li>
-								<a href="#" class="blueButton" id="submitplace" >Absenden</a>
-							</li>
-						</ul>
-					</form>
-					<form id="kmform" action="#" method="get">
-						<h2><img src="img/autobahn.png" style="margin-right: 5px;"/><label for="km">Autobahnkilometrierung:</label></h2>
-						<ul class="edit rounded">
-
-							<li class="arrow">
-								<select id="bab"></select>
-								<select id="bab_sub"></select>
-							</li>
-							<li>
-								<input type="text" class='android:inputType="numberDecimal"' name="km" placeholder="km eingeben (Punkt als Dezimaltrenner also 5.5 etc.)" id="km" value=""/>
-								<a href="#" class="blueButton" id="submitbab" >Kilometer suchen</a>
-							</li>
-
-						</ul>
-					</form>
-					<h2>Ergebnisse</h2>
-					<ul class="rounded" id="result">
-						<li></li>
-					</ul>
-				</div>
-			</div>
-			<div id="gpstools">
-				<div class="toolbar">
-					<h1>GPS Tools</h1>
-					<a href="#" class="back">&nbsp; &nbsp; Suche/...</a>
-					<a href="#settings" class="button flipright">Einstellungen</a>
-				</div>
-				<div class="scroll gpson">
-					<ul id="" class="rounded">
-						<li>
-							<a id="gps_setpos" class="blueButton" href="#" style=""><img src="img/marker_start.png" /> Start setzen (von hier aus rechnen)</a>
-							<a id="gps_getpos" class="blueButton" href="#" style=""><img src="img/finish_flag.png" /> Ziel setzen (diesen Punkt nachschlagen)</a>
-							<a id="gps_follow" class="blueButton" href="#" style=""><img src="img/marker_pos.png" /> Verfolgen (aktuelle Positionen anzeigen)</a>
-							<a id="gps_follow0" class="greenButton" href="#" style="display:none" disabled>Das Gerät wird nachführt...</a>
-						</li>
-						<li>
-							<a id="gps_cancel" class="grayButton" href="#" style="display:none">GPS Operation abbrechen</a>
-						</li>
-						<li>
-							<a id="gps_reset" class="grayButton" href="#" style="">Tracking aus und alle Positionen zurücksetzen</a>
-						</li>
-					</ul>
-				</div>
-				<div class="scroll">
-					<h2>Infos</h2>
-					<ul id="gpsinfo" class="rounded">
-						<li class="gpsoff">
-							GPS Tools wurden abgeschalten
-						</li>
-					</ul>
-				</div>
-			</div>
-			<div id="settings">
-				<div class="toolbar gpson">
-					<h1>Einstellungen</h1>
-					<a href="#" class="back">&nbsp; &nbsp; GPS&nbsp;</a>
-					<a href="#about" class="button flipright">Kredits</a>
-				</div>
-				<div class="toolbar gpsoff">
-					<h1>Einstellungen</h1>
-					<a href="#" class="back">&nbsp; &nbsp; Suche&nbsp;</a>
-					<a href="#about" class="button flipright">Kredits</a>
-				</div>
-				<div class="scroll">
-					<form action="#" method="get" id="settingsform">
-						<h2>Berechnungen anpassen</h2>
-						<ul class="edit rounded">
-							<li>
-								<label for="shortest">Kürzeste Route ermitteln?</label>
-								<input id="shortest" class="toggle" type="checkbox" checked>
-								<ul class="edit rounded" id="onlyifshortest">
-									<li id="li_route_shortest">
-										<label for="route_shortest">Kürzeste Route einzeichnen?</label>
-										<input id="route_shortest" class="toggle" type="checkbox" checked>
-									</li>
-									<li id="li_overhead_shortest">
-										<label for="overhead_shortest">Bei kürzester Route weitergehende Entfernung zu Zone 3 ermitteln?</label>
-										<input id="overhead_shortest" class="toggle" type="checkbox" checked>
-									</li>
-								</ul>
-							</li>
-							<li>
-								<label for="fastest">Schnellste Route ermitteln?</label>
-								<input id="fastest" class="toggle" type="checkbox" checked>
-								<ul class="edit rounded" id="onlyiffastest">
-									<li id="li_route_fastest">
-										<label for="route_fastest">Schnellste Route einzeichnen?</label>
-										<input id="route_fastest" class="toggle" type="checkbox" checked>
-									</li>
-									<li id="li_overhead_fastest">
-										<label for="overhead_fastest">Bei schnellster Route weitergehende Entfernung zu Zone 3 ermitteln?</label>
-										<input id="overhead_fastest" class="toggle" type="checkbox" checked>
-									</li>
-								</ul>
-							</li>
-							<li>
-								<label for="closest">Minimale Entfernung zu Zone 3 ermitteln (Luftlinie)?</label>
-								<input id="closest" class="toggle" type="checkbox">
-							</li>
-						</ul>
-						<h2>Ausgaben anpassen</h2>
-						<ul class="edit rounded">
-							<li>
-								<label for="details">Zeige Adressdetails?</label>
-								<input id="details" class="toggle" type="checkbox">
-							</li>
-							<li>
-								<label for="show_coordinaten">Zeige Koordinaten?</label>
-								<input id="show_coordinaten" class="toggle" type="checkbox">
-							</li>
-							<li>
-								<label for="show_times">Zeige ungefähre Fahrzeiten?</label>
-								<input id="show_times" class="toggle" type="checkbox" checked>
-							</li>
-							<li>
-								<label for="show_times">Zeige Schnittpunkte mit Zone 3?</label>
-								<input id="show_endpoints" class="toggle" type="checkbox">
-							</li>
-							<li>
-								<label for="show_bab">Zeige Autobahn-Kilometrierung?</label>
-								<input id="show_bab" class="toggle" type="checkbox">
-							</li>
-							<li>
-								<label for="show_gps">Zeige GPS Tool?</label>
-								<input id="show_gps" class="toggle" type="checkbox">
-							</li>
-						</ul>
-					</form>
-				</div>
-			</div>
-			<div id="about">
-				<div class="toolbar">
-					<h1>Kredits</h1>
-					<a href="#" class="back">&nbsp; &nbsp; Einstell..</a>
-				</div>
-				<div class="scroll">
-					<h2>Verwendete Software/Dienste</h2>
-					<ul class="rounded">
-						<li>
-							Kartenmaterial: © OpenStreetMap contributors under <a href="www.openstreetmap.org/copyright">Open Database Licence</a>
-						</li>
-						<li>
-							Kartengrafik: OpenLayers v3.2 -  Code licensed under the
-<a href="http://www.tldrlegal.com/license/bsd-2-clause-license-(freebsd)">2-Clause BSD</a>
-. All documentation
-<a href="http://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>
-. Thanks to our
-<a href="http://openlayers.org/sponsors.html">sponsors</a> 
-						</li>
-						<li>
-							Geoservices: © <a href="http://www.mapquest.com/" target="_blank">MapQuest <img src="img/mq-logo.png"></a>
-						</li>
-						<li>
-							<p>
-								Directions Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest <img src="img/mq-logo.png"></a>
-							</p>
-
-						</li>
-						<li>
-							IDE: Aptana &copy; Copyright 2005-2013 by Appcelerator, Inc.
-						</li>
-						<li>
-							Testplattform: Mozilla Firefox mit Firebug
-						</li>
-						<li>
-							Distanzberechnung: André Knieriem
-						</li>
-						<li>
-							Polygonformeln: Jonas Raoni Soares Silva
-						</li>
-						<li>
-							Kartendarstellung: Falk (OSM) <a href="http://www.falk.de/" target="_blank">FALK <img src="img/falk.svg"></a>
-						</li>
-						<li>
-							Programmiert unter Linux Mint
-						</li>
-						<li>
-							Programmierung: <a href="http://www.klupea.de/" target="_blank">KLUPEA GmbH</><a href="http://www.klupea.de/" target="_blank"><img src="img/klupea.png"></a>
-						</li>
-						<li>
-							&copy; Sven Hering 2015
-						</li>
-					</ul>
-				</div>
-			</div>
-		</div>
-	</body>
+      <section id="about" class="page">
+        <header class="toolbar">
+          <a href="#settings" class="back">Einstell..</a>
+          <h1>Kredits</h1>
+        </header>
+        <div class="scroll">
+          <h2>Verwendete Software/Dienste</h2>
+          <ul class="rounded">
+            <li>Kartenmaterial: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-Mitwirkende</a> unter der Open Database Licence</li>
+            <li>Kartenkacheln: <a href="https://www.openstreetmap.de/" target="_blank" rel="noopener">OpenStreetMap Deutschland</a> (FOSSGIS e.V.)</li>
+            <li>Kartengrafik: <a href="https://openlayers.org/" target="_blank" rel="noopener">OpenLayers</a> 10 – Code unter der 2-Clause-BSD-Lizenz</li>
+            <li>Adresssuche: <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a> (OpenStreetMap Foundation)</li>
+            <li>Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a>, Server von <a href="https://www.fossgis.de/" target="_blank" rel="noopener">FOSSGIS e.V.</a></li>
+            <li>Distanzberechnung: André Knieriem</li>
+            <li>Polygonformeln: Jonas Raoni Soares Silva</li>
+            <li>Programmierung: <a href="http://www.klupea.de/" target="_blank" rel="noopener">KLUPEA GmbH <img src="img/klupea.png" alt="" /></a></li>
+            <li>&copy; Sven Hering 2015</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </body>
 </html>
