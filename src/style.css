@@ -66,3 +66,13 @@ a { color: #194fdb; }
 @media print {
   .toolbar, .ol-control { display: none !important; }
 }
+
+.fatal {
+  margin: 2rem 1rem;
+  padding: 1rem;
+  border: 2px solid #c00;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #900;
+  font-weight: bold;
+}
