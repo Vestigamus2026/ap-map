@@ -203,3 +203,37 @@ test('a cancelled GPS lookup does not set the destination later', async ({ page 
   await expect(page.locator('#gpsinfo')).not.toContainText('Ziel-Position gesetzt');
   await expect(page.locator('#location')).toHaveValue('');
 });
+
+test.describe('GPS reset', () => {
+  test.use({ geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
+
+  test('recalculates the routes from the default start', async ({ page }) => {
+    const calls = await mockServices(page);
+    await page.addInitScript(() => localStorage.setItem('gebietskarte_settings', 'show_gps,true'));
+    await page.goto('/#search');
+    await page.fill('#location', '52.40 13.06');
+    await page.click('#submitplace');
+    await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
+    await page.goto('/#gpstools');
+    await page.click('#gps_setpos');
+    await expect(page.locator('#gpsinfo')).toContainText('Start-Position gesetzt');
+    await expect.poll(() => calls.valhalla.at(-1).locations[0].lat).toBe(52.45);
+    await page.click('#gps_reset');
+    await expect.poll(() => calls.valhalla.at(-1).locations[0]).toEqual({ lat: 52.461527, lon: 13.363081 });
+    await page.goto('/#search');
+    await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
+  });
+});
+
+test('GPS errors are explained in German', async ({ page }) => {
+  await mockServices(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('gebietskarte_settings', 'show_gps,true');
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition: (ok, err) => err({ code: 1, message: '' }), watchPosition: () => 1, clearWatch: () => {} },
+    });
+  });
+  await page.goto('/#gpstools');
+  await page.click('#gps_getpos');
+  await expect(page.locator('#gpsinfo')).toHaveText('Position nicht verfügbar: Zugriff auf den Standort verweigert');
+});

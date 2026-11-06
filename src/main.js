@@ -170,6 +170,8 @@ $('kmform').addEventListener('submit', (e) => {
 let watchId = null;
 let gpsRequest = 0;
 const gpsInfo = (text, point) => addResult({ text, coordinates: point && coordsIfWanted(point) }, 'gpsinfo');
+const GPS_ERRORS = { 1: 'Zugriff auf den Standort verweigert', 2: 'Position konnte nicht ermittelt werden', 3: 'Zeitüberschreitung' };
+const gpsErrorText = (err) => `Position nicht verfügbar: ${GPS_ERRORS[err?.code] || 'unbekannter Fehler'}`;
 const toPoint = (pos) => [pos.coords.longitude, pos.coords.latitude];
 
 function gpsButtons(mode) {
@@ -200,7 +202,7 @@ function locateOnce(onPoint) {
     (err) => {
       if (request !== gpsRequest) return;
       gpsButtons('idle');
-      gpsInfo(`Position nicht verfügbar: ${err.message}`);
+      gpsInfo(gpsErrorText(err));
     },
     { enableHighAccuracy: true, timeout: 20000 },
   );
@@ -230,7 +232,7 @@ $('gps_setpos').addEventListener('click', () =>
 $('gps_follow').addEventListener('click', () => {
   if (!navigator.geolocation) return;
   gpsButtons('follow');
-  watchId = navigator.geolocation.watchPosition((pos) => map.setGps(toPoint(pos)), (err) => gpsInfo(`Position nicht verfügbar: ${err.message}`), {
+  watchId = navigator.geolocation.watchPosition((pos) => map.setGps(toPoint(pos)), (err) => gpsInfo(gpsErrorText(err)), {
     enableHighAccuracy: true,
   });
   gpsInfo('Tracking angeschaltet');
@@ -250,4 +252,8 @@ $('gps_reset').addEventListener('click', () => {
   map.setGps(null);
   $('gpsinfo').replaceChildren();
   gpsInfo('Werte zurückgesetzt');
+  if (state.destination) {
+    $('result').replaceChildren();
+    search({ point: state.destination });
+  }
 });
