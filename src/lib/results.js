@@ -38,7 +38,7 @@ function routeEntry(title, color, route, settings) {
   return { text: title, color, items };
 }
 
-export function buildResultEntries(result, settings) {
+export function buildResultEntries(result, settings, colors = { shortestRoute: SHORTEST_COLOR, fastestRoute: FASTEST_COLOR }) {
   if (!result.ok) return [{ text: result.message }];
   const coords = (p) => (settings.show_coordinaten && p ? formatCoordinates(p) : undefined);
   const entries = [];
@@ -68,7 +68,7 @@ export function buildResultEntries(result, settings) {
     entries.push({ text: 'Entfernung zu Zone 3', color: CLOSEST_COLOR, items });
   }
 
-  if (result.shortest) entries.push(routeEntry('Kürzeste Verbindung:', SHORTEST_COLOR, result.shortest, settings));
-  if (result.fastest) entries.push(routeEntry('Schnellste Verbindung:', FASTEST_COLOR, result.fastest, settings));
+  if (result.shortest) entries.push(routeEntry('Kürzeste Verbindung:', colors.shortestRoute, result.shortest, settings));
+  if (result.fastest) entries.push(routeEntry('Schnellste Verbindung:', colors.fastestRoute, result.fastest, settings));
   return entries;
 }

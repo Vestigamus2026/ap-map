@@ -179,6 +179,7 @@ test('credits list the new services', async ({ page }) => {
   await mockServices(page);
   await page.goto('/#about');
   const about = page.locator('#about');
+  await expect(page.locator('#about h1')).toHaveText('Credits');
   await expect(about).toContainText('Nominatim');
   await expect(about).toContainText('Valhalla');
   await expect(about).toContainText('OpenLayers');
@@ -280,4 +281,57 @@ test.describe('GPS reset while routing', () => {
     await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
     await expect(page.locator('#result')).toContainText('Ergebnisqualität: Ort');
   });
+});
+
+test.describe('Einstellungsdatei config.json', () => {
+  const square = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+  const custom = {
+    mapName: 'Testgebiet Nord',
+    home: [10.0, 53.55],
+    colors: { shortestRoute: 'rgb(0, 0, 255)' },
+    zones: {
+      zone1: square(9.9, 53.5, 10.1, 53.6),
+      zone2: square(9.8, 53.4, 10.2, 53.7),
+      zone3: square(9.5, 53.2, 10.5, 53.9),
+    },
+  };
+
+  test('uses map name, home position, zones and colours from the file', async ({ page }) => {
+    const calls = await mockServices(page);
+    await page.route('**/config.json', (route) => route.fulfill({ json: custom }));
+    await page.goto('/#search');
+    await expect(page).toHaveTitle('Testgebiet Nord');
+    await page.fill('#location', '53.55 10.05');
+    await page.click('#submitplace');
+    await expect(page.locator('#result')).toContainText('Diese Position befindet sich in Zone 1.');
+    await expect.poll(() => calls.valhalla.at(-1)?.locations[0]).toEqual({ lat: 53.55, lon: 10 });
+    const shortest = page.locator('#result > li', { hasText: 'Kürzeste Verbindung:' }).locator('ul.sublist');
+    await expect(shortest).toHaveCSS('background-color', 'rgb(0, 0, 255)');
+  });
+
+  test('shows a German error for a broken file', async ({ page }) => {
+    await mockServices(page);
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, home: 'Hamburg' } }));
+    await page.goto('/');
+    await expect(page.locator('body')).toContainText('Fehler in der Einstellungsdatei: "home" muss [Länge, Breite] sein.');
+  });
+
+  test('is part of the build with the original values', async ({ page }) => {
+    const res = await page.request.get('/config.json');
+    expect(res.ok()).toBe(true);
+    const c = await res.json();
+    expect(c.mapName).toBe('Kroll APG 607');
+    expect(c.home).toEqual([13.363081, 52.461527]);
+    expect(c.zones.zone3).toHaveLength(11);
+  });
+});
+
+test('GPS page and settings use German labels', async ({ page }) => {
+  await mockServices(page);
+  await page.addInitScript(() => localStorage.setItem('gebietskarte_settings', 'show_gps,true'));
+  await page.goto('/#gpstools');
+  await expect(page.locator('#gpstools h1')).toHaveText('GPS-Werkzeuge');
+  await page.goto('/#settings');
+  await expect(page.locator('#settings')).toContainText('Zeige GPS-Werkzeuge?');
+  await expect(page.locator('body')).not.toContainText(/Tools?\b|Tracking|Operation|Kredits/);
 });

@@ -1,5 +1,4 @@
 import './style.css';
-import { appName, zone1, zone2, zone3, defaultStart, preferredExtent } from './data/zones.js';
 import { motorways as motorwayData } from './data/motorways.js';
 import { createZones } from './lib/zones.js';
 import { buildMotorways } from './lib/motorways.js';
@@ -9,6 +8,7 @@ import { buildResultEntries } from './lib/results.js';
 import { formatKm, formatCoordinates } from './lib/format.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings.js';
 import { createMap } from './map.js';
+import { loadConfig } from './lib/config.js';
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -19,11 +19,23 @@ const storage = (() => {
   }
 })();
 
-document.title = appName;
-const zones = createZones({ zone1, zone2, zone3 });
+let config;
+try {
+  config = await loadConfig();
+} catch (err) {
+  const box = document.createElement('p');
+  box.className = 'fatal';
+  box.textContent = `Fehler in der Einstellungsdatei: ${err.message}`;
+  document.body.replaceChildren(box);
+  throw err;
+}
+const { mapName, home: defaultStart, preferredExtent, colors } = config;
+
+document.title = mapName;
+const zones = createZones(config.zones);
 const motorways = buildMotorways(motorwayData);
 const api = createGeoApi();
-const map = createMap($('map'), { zone1, zone2, zone3, start: defaultStart });
+const map = createMap($('map'), { zones: config.zones, start: defaultStart, colors, widths: config.widths });
 
 const state = { start: defaultStart, target: null, destination: null, busy: false, settings: loadSettings(storage) };
 map.setStart(state.start);
@@ -121,7 +133,7 @@ async function search({ query, point, target }) {
       query, point, target, start: state.start, settings: state.settings, api, zones, motorways, extent: preferredExtent,
     });
     if (gen !== searchGen) return;
-    for (const entry of buildResultEntries(result, state.settings)) addResult(entry);
+    for (const entry of buildResultEntries(result, state.settings, colors)) addResult(entry);
     if (!result.ok) {
       if (query != null) {
         state.target = null;
@@ -239,13 +251,13 @@ $('gps_follow').addEventListener('click', () => {
   watchId = navigator.geolocation.watchPosition((pos) => map.setGps(toPoint(pos)), (err) => gpsInfo(gpsErrorText(err)), {
     enableHighAccuracy: true,
   });
-  gpsInfo('Tracking angeschaltet');
+  gpsInfo('Verfolgen eingeschaltet');
 });
 
 $('gps_cancel').addEventListener('click', () => {
   stopTracking();
   gpsButtons('idle');
-  gpsInfo('Tracking beendet');
+  gpsInfo('Verfolgen beendet');
 });
 
 $('gps_reset').addEventListener('click', () => {

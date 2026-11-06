@@ -11,13 +11,12 @@ import { fromLonLat } from 'ol/proj.js';
 import { boundingExtent } from 'ol/extent.js';
 import { Style, Stroke, Fill, Icon } from 'ol/style.js';
 import { defaults as defaultControls, ScaleLine, Control } from 'ol/control.js';
-import { SHORTEST_COLOR, FASTEST_COLOR } from './lib/results.js';
 
 const ring = (points) => points.map((p) => fromLonLat(p));
-const fill = (stroke, fillColor) => new Style({ stroke: new Stroke({ color: stroke, width: 1 }), fill: new Fill({ color: fillColor }) });
+const fill = ({ border, fill: fillColor }, width) => new Style({ stroke: new Stroke({ color: border, width }), fill: new Fill({ color: fillColor }) });
 const icon = (src, anchor, anchorXUnits, zIndex) =>
   new Style({ image: new Icon({ src, anchor, anchorXUnits, anchorYUnits: 'fraction' }), zIndex });
-const line = (color, zIndex) => new Style({ stroke: new Stroke({ color, width: 12 }), zIndex });
+const line = (color, width, zIndex) => new Style({ stroke: new Stroke({ color, width }), zIndex });
 
 function vectorLayer(style, attributions) {
   const source = new VectorSource({ attributions });
@@ -38,7 +37,7 @@ class FitZonesControl extends Control {
   }
 }
 
-export function createMap(target, { zone1, zone2, zone3, start }) {
+export function createMap(target, { zones: { zone1, zone2, zone3 }, start, colors, widths }) {
   const zoneGeometry = new Polygon([ring(zone3), ring(zone2)]);
   const zones = vectorLayer(null, '<a href="https://www.klupea.de" target="_blank" rel="noopener">Programm: © 2015 KLUPEA GmbH</a>');
   zones.source.addFeatures([
@@ -47,15 +46,15 @@ export function createMap(target, { zone1, zone2, zone3, start }) {
     new Feature({ geometry: new Polygon([ring(zone1)]), style: 1 }),
   ]);
   const zoneStyles = {
-    1: fill('green', 'rgba(0, 128, 0, 0.3)'),
-    2: fill('rgba(215, 179, 104, 1)', 'rgba(215, 179, 104, 0.3)'),
-    3: fill('red', 'rgba(255, 0, 0, 0.3)'),
+    1: fill(colors.zone1, widths.zone1),
+    2: fill(colors.zone2, widths.zone2),
+    3: fill(colors.zone3, widths.zone3),
   };
   zones.layer.setStyle((f) => zoneStyles[f.get('style')]);
 
   const routes = {
-    shortest: vectorLayer(line(SHORTEST_COLOR, 101)),
-    fastest: vectorLayer(line(FASTEST_COLOR, 100)),
+    shortest: vectorLayer(line(colors.shortestRoute, widths.shortestRoute, 101)),
+    fastest: vectorLayer(line(colors.fastestRoute, widths.fastestRoute, 100)),
   };
   const destination = vectorLayer(icon('img/finish_flag.png', [0.333, 0.95], 'fraction', 1000), 'Zonendaten: Januar 2015, assistance partner GmbH & Co. KG');
   const startMarker = vectorLayer(icon('img/marker_start.png', [8, 1], 'pixels', 100));
