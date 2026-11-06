@@ -106,7 +106,7 @@ describe('public/config.json', () => {
     expect(c.home).toEqual([13.363081, 52.461527]);
     expect(c.preferredExtent).toEqual([[52.9, 12.4], [51.9, 14.2]]);
     expect(c.colors).toEqual(DEFAULT_COLORS);
-    expect(c.widths).toEqual(DEFAULT_WIDTHS);
+    expect(c.widths).toEqual({ ...DEFAULT_WIDTHS, shortestRoute: 4, fastestRoute: 4 });
     expect([c.zones.zone1.length, c.zones.zone2.length, c.zones.zone3.length]).toEqual([27, 12, 11]);
   });
 });

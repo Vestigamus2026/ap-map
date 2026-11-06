@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Druckansicht</title>
+    <link rel="icon" href="favicon.ico" />
+    <style id="page-size"></style>
+    <script type="module" src="/src/print.js"></script>
+  </head>
+  <body>
+    <form id="tools" class="tools" action="#">
+      <a href="index.html">Zur Karte</a>
+      <label>Papier
+        <select id="format"><option>A4</option><option>A3</option><option>A2</option><option>A1</option><option>A0</option></select>
+      </label>
+      <label>Ausrichtung
+        <select id="orientation"><option value="portrait">hoch</option><option value="landscape">quer</option></select>
+      </label>
+      <button type="button" id="print">Drucken</button>
+      <button type="button" id="png">Als PNG speichern</button>
+    </form>
+    <main id="sheet" class="sheet">
+      <header>
+        <h1 id="title"></h1>
+        <p id="date"></p>
+      </header>
+      <div id="printmap" class="printmap"></div>
+      <footer>
+        <ul id="legend" class="legend"></ul>
+        <p class="sources">
+          Kartenmaterial: © OpenStreetMap-Mitwirkende (ODbL), Kacheln: OpenStreetMap Deutschland ·
+          Zonendaten: Januar 2015, assistance partner GmbH &amp; Co. KG ·
+          Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
