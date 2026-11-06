@@ -203,3 +203,81 @@ test('a cancelled GPS lookup does not set the destination later', async ({ page 
   await expect(page.locator('#gpsinfo')).not.toContainText('Ziel-Position gesetzt');
   await expect(page.locator('#location')).toHaveValue('');
 });
+
+test.describe('GPS reset', () => {
+  test.use({ geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
+
+  test('recalculates the routes from the default start', async ({ page }) => {
+    const calls = await mockServices(page);
+    await page.addInitScript(() => localStorage.setItem('gebietskarte_settings', 'show_gps,true'));
+    await page.goto('/#search');
+    await page.fill('#location', '52.40 13.06');
+    await page.click('#submitplace');
+    await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
+    await page.goto('/#gpstools');
+    await page.click('#gps_setpos');
+    await expect(page.locator('#gpsinfo')).toContainText('Start-Position gesetzt');
+    await expect.poll(() => calls.valhalla.at(-1).locations[0].lat).toBe(52.45);
+    await page.click('#gps_reset');
+    await expect.poll(() => calls.valhalla.at(-1).locations[0]).toEqual({ lat: 52.461527, lon: 13.363081 });
+    await page.goto('/#search');
+    await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
+  });
+});
+
+test('GPS errors are explained in German', async ({ page }) => {
+  await mockServices(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('gebietskarte_settings', 'show_gps,true');
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition: (ok, err) => err({ code: 1, message: '' }), watchPosition: () => 1, clearWatch: () => {} },
+    });
+  });
+  await page.goto('/#gpstools');
+  await page.click('#gps_getpos');
+  await expect(page.locator('#gpsinfo')).toHaveText('Position nicht verfügbar: Zugriff auf den Standort verweigert');
+});
+
+test.describe('GPS reset while routing', () => {
+  test.use({ geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
+
+  test('a pending route from the GPS start cannot overwrite the reset result', async ({ page }) => {
+    await mockServices(page);
+    await page.route('**/valhalla1.openstreetmap.de/**', async (route) => {
+      const req = JSON.parse(new URL(route.request().url()).searchParams.get('json'));
+      const [a, b] = req.locations.map((l) => [l.lon, l.lat]);
+      const fromGps = req.locations[0].lat === 52.45;
+      if (fromGps) await new Promise((r) => setTimeout(r, 1500));
+      return route.fulfill({
+        json: { trip: { summary: { length: fromGps ? 11.1 : 22.2, time: 600 }, legs: [{ shape: encodePolyline([a, b], 6) }] } },
+        headers: { 'access-control-allow-origin': '*' },
+      });
+    });
+    await page.addInitScript(() => localStorage.setItem('gebietskarte_settings', 'show_gps,true;fastest,false;overhead_shortest,false'));
+    await page.goto('/#search');
+    await page.fill('#location', '52.40 13.06');
+    await page.click('#submitplace');
+    await expect(page.locator('#result')).toContainText('22.2 km');
+    await page.goto('/#gpstools');
+    await page.click('#gps_setpos');
+    await expect(page.locator('#gpsinfo')).toContainText('Start-Position gesetzt');
+    await page.click('#gps_reset');
+    await page.waitForTimeout(2000);
+    await expect(page.locator('#result')).toContainText('22.2 km');
+    await expect(page.locator('#result')).not.toContainText('11.1 km');
+  });
+
+  test('keeps the address details of a searched destination', async ({ page }) => {
+    await mockServices(page);
+    await page.addInitScript(() => localStorage.setItem('gebietskarte_settings', 'show_gps,true;details,true'));
+    await page.goto('/#search');
+    await page.fill('#location', 'Frankfurt Oder');
+    await page.click('#submitplace');
+    await expect(page.locator('#result')).toContainText('Ergebnisqualität: Ort');
+    await page.goto('/#gpstools');
+    await page.click('#gps_reset');
+    await page.goto('/#search');
+    await expect(page.locator('#result')).toContainText('Kürzeste Verbindung:');
+    await expect(page.locator('#result')).toContainText('Ergebnisqualität: Ort');
+  });
+});

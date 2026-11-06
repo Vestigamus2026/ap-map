@@ -4,6 +4,17 @@ export const SHORTEST_COLOR = 'rgba(55, 158, 86, 0.6)';
 export const FASTEST_COLOR = 'rgba(237, 26, 26, 0.6)';
 export const CLOSEST_COLOR = 'lightgray';
 
+const QUALITY_DE = {
+  ADDRESS: 'Adresse',
+  STREET: 'Straße',
+  ZIP: 'Postleitzahl',
+  CITY: 'Ort',
+  COUNTY: 'Landkreis',
+  STATE: 'Bundesland',
+  COUNTRY: 'Land',
+  POINT: 'Punkt',
+};
+
 export function entryText(entry) {
   const main = entry.text + (entry.km != null ? formatKm(entry.km) : '');
   return entry.coordinates ? `${main} ${entry.coordinates}` : main;
@@ -37,7 +48,7 @@ export function buildResultEntries(result, settings) {
   const loc = result.target.location;
   if (settings.details && loc) {
     entries.push({
-      text: `${formatLocation(loc)} Ergebnisqualität: ${loc.quality} (${loc.qualityCode})`,
+      text: `${formatLocation(loc)} Ergebnisqualität: ${QUALITY_DE[loc.quality] || QUALITY_DE.POINT}`,
       coordinates: coords(result.target.point),
     });
   }

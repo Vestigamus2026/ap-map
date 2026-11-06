@@ -59,9 +59,15 @@ describe('buildResultEntries', () => {
     expect(closest.items.map(entryText)).toEqual(['Luftlinie 33.8 km', 'Rand (DE)']);
   });
 
+  it('shows the result quality in German, also for unknown kinds', () => {
+    const point = buildResultEntries({ ...full, target: { ...target, location: { ...target.location, quality: 'POINT', qualityCode: 'square' } } }, settings({ details: true }));
+    expect(entryText(point[1])).toMatch(/Ergebnisqualität: Punkt$/);
+    expect(entryText(point[1])).not.toContain('square');
+  });
+
   it('shows address details and quality on demand', () => {
     const e = buildResultEntries(full, settings({ details: true }));
-    expect(entryText(e[1])).toBe('Markt 1, 15230 Frankfurt (Oder) (DE) Ergebnisqualität: ADDRESS (house)');
+    expect(entryText(e[1])).toBe('Markt 1, 15230 Frankfurt (Oder) (DE) Ergebnisqualität: Adresse');
   });
 
   it('appends coordinates only when "Koordinaten" is on', () => {
