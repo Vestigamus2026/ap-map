@@ -52,7 +52,7 @@ function legendItem(entry) {
   li.append(entry.label);
   return li;
 }
-$('legend').replaceChildren(...legendEntries(colors, last).map(legendItem));
+$('legend').replaceChildren(...legendEntries(colors, last, Object.keys(config.zones)).map(legendItem));
 
 const map = createMap($('printmap'), { zones: config.zones, start, colors, widths: config.widths, print: true });
 map.setStart(start);

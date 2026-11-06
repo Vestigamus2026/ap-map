@@ -25,10 +25,90 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `colors.shortestRoute`, `colors.fastestRoute` | Farbe der Routen auf der Karte und im Ergebnis |
 | `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln |
 | `widths.shortestRoute`, `widths.fastestRoute` | Linienbreite der Routen in Pixeln |
-| `zones.zone1` … `zones.zone3` | Zonengrenzen als Liste von Punkten `[Länge, Breite]` |
+| `zones.zone1` | Pflicht: Grenze von Zone 1 als Liste von Punkten `[Länge, Breite]` oder als Liste solcher Umrisse (siehe unten) |
+| `zones.zone2`, `zones.zone3` | optional, Aufbau wie `zones.zone1` |
 
 Farben und Breiten sind optional; fehlende Werte nehmen die bisherigen Standardwerte.
-Zone 1 muss ganz in Zone 2 liegen und Zone 2 ganz in Zone 3.
+
+Zone 2 und Zone 3 dürfen fehlen, Zone 1 nicht. Jede Zone muss ganz in der nächsten
+vorhandenen äußeren Zone liegen (Zone 1 in Zone 2, Zone 2 in Zone 3; ohne Zone 2 Zone 1 in Zone 3).
+„Entfernung zu Zone …“ und „außerhalb Zone …“ beziehen sich immer auf die äußerste vorhandene Zone.
+
+Eine Zone kann aus mehreren Umrissen bestehen, z. B. für Exklaven (getrennte Teilflächen) und
+Enklaven (Löcher):
+
+```json
+"zone1": [
+  [[11.9, 51.4], [12.1, 51.4], [12.1, 51.5], [11.9, 51.4]],
+  [[11.95, 51.42], [12.0, 51.42], [12.0, 51.45], [11.95, 51.42]],
+  [[12.2, 51.4], [12.3, 51.4], [12.3, 51.45], [12.2, 51.4]]
+]
+```
+
+Ein Umriss, der in einem anderen liegt, ist ein Loch; ein Umriss in einem Loch ist wieder Fläche.
+Getrennte Umrisse sind weitere Teile der Zone.
+
+## Zone aus einer OpenStreetMap-Relation übernehmen
+
+Eine Gemeinde-, Kreis- oder andere Grenze aus OpenStreetMap wird einmalig heruntergeladen und als
+normale Punkte in `public/config.json` geschrieben. Die Besucher der Seite laden nichts von OpenStreetMap nach.
+
+1. **Relation suchen:** auf <https://www.openstreetmap.org> den Ort suchen, z. B. „Halle (Saale)“, in der
+   Trefferliste den Eintrag mit „Grenze“ bzw. „Administrative Grenze“ anklicken. Die Adresse im Browser
+   lautet dann z. B. `https://www.openstreetmap.org/relation/62638`; `62638` ist die Relations-ID.
+2. **Im Projektordner importieren** (Node.js und `npm install` wie unter „Entwicklung“):
+
+   ```bash
+   npm run zone -- zone1 62638
+   ```
+
+   Statt der ID kann auch die ganze Adresse angegeben werden:
+   `npm run zone -- zone1 https://www.openstreetmap.org/relation/62638`.
+   Erfolgreich sieht die Ausgabe so aus:
+
+   ```text
+   zone1 ← Halle (Saale) (Relation 62638): 1535 → 307 Punkte (Toleranz 20 m), gespeichert in public/config.json
+   ```
+
+   Hat die Relation Exklaven oder Enklaven, folgt eine Zeile wie `3 Umrisse: 2 Teilflächen, 1 Loch (Enklave)`.
+   Alle Umrisse werden übernommen.
+3. **Prüfen:** `npm run dev` starten und die angezeigte Adresse öffnen. Die Zone muss auf der Karte erscheinen.
+   Gegebenenfalls `home` in `public/config.json` auf die neue Startposition setzen.
+4. **Veröffentlichen:** `npm run build` und `dist/` wie unter „Build und Deployment“ auf den Server kopieren.
+   Wer `config.json` auf dem Server pflegt, kopiert stattdessen nur die geänderte Datei:
+   `scp public/config.json <user>@<server>:/var/www/ap-map/config.json`.
+
+Die übrigen Zonen bleiben unverändert. Bei einem Fehler wird die Datei nicht geändert.
+
+**Ganz neues Gebiet:** Weil jede Zone in der nächsten äußeren liegen muss, scheitert der Import, solange die
+alten Zonen 2 und 3 noch woanders liegen (`Fehler: Zone 1 muss vollständig in Zone 2 liegen.`).
+Dann in `public/config.json` die Einträge `"zone2"` und `"zone3"` löschen und von innen nach außen importieren:
+
+```bash
+npm run zone -- zone1 <ID der inneren Fläche>
+npm run zone -- zone2 <ID der mittleren Fläche>   # optional
+npm run zone -- zone3 <ID der äußeren Fläche>     # optional
+```
+
+Fehlende Zonen 2 oder 3 werden dabei neu angelegt.
+
+**Optionen:**
+
+| Option | Bedeutung |
+|---|---|
+| `--toleranz 20` | Vereinfachung in Metern (Standard 20). Punkte, die weniger als so weit von der Linie abweichen, entfallen. `--toleranz 0` übernimmt alle Punkte. |
+| `--datei dist/config.json` | andere Einstellungsdatei bearbeiten (Standard `public/config.json`) |
+| `--server <URL>` | anderer Overpass-Server, falls `https://overpass-api.de/api/interpreter` überlastet ist, z. B. `--server https://overpass.private.coffee/api/interpreter` |
+
+**Häufige Fehler:**
+
+- `Zone 2 muss vollständig in Zone 3 liegen.` – die Flächen sind nicht ineinander verschachtelt. Teilen sich zwei
+  Zonen eine Grenze (z. B. Stadt und Landkreis), kann die Vereinfachung die gemeinsame Grenze leicht verschieben;
+  dann beide Zonen mit `--toleranz 0` importieren.
+- `Overpass ist nicht erreichbar` oder `Overpass antwortet mit HTTP 429/504` – später erneut versuchen oder mit `--server`
+  einen anderen Server angeben.
+- `Relation wurde nicht gefunden.` – die ID prüfen; es muss eine Relation sein, kein Weg (`/way/…`) und kein Punkt (`/node/…`).
+- `Der Umriss der Relation ist nicht geschlossen.` – die Grenze ist in OpenStreetMap unvollständig; eine andere Relation wählen.
 
 ## Entwicklung
 

@@ -51,7 +51,7 @@ export async function runSearch({ query, point, target: resolved = null, start, 
 
   const closestTask = (async () => {
     if (!(settings.closest && outsideAll)) return null;
-    const closest = { ...zones.closestOnZone3(target.point), location: null };
+    const closest = { ...zones.closestOnOuter(target.point), location: null };
     if (settings.show_endpoints) closest.location = await orNull(api.reverse(closest.point));
     return closest;
   })();
@@ -71,5 +71,5 @@ export async function runSearch({ query, point, target: resolved = null, start, 
   };
 
   const [closest, shortest, fastest] = await Promise.all([closestTask, routeTask(true), routeTask(false)]);
-  return { ok: true, target, zone, motorway, closest, shortest, fastest };
+  return { ok: true, target, zone, outerZone: zones.outer, motorway, closest, shortest, fastest };
 }

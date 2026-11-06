@@ -3,9 +3,9 @@ import { createZones } from '../../src/lib/zones.js';
 
 const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
 const zones = createZones({
-  zone1: ring(13.3, 52.4, 13.4, 52.5),
-  zone2: ring(13.2, 52.3, 13.5, 52.6),
-  zone3: ring(13.0, 52.0, 14.0, 53.0),
+  zone1: [ring(13.3, 52.4, 13.4, 52.5)],
+  zone2: [ring(13.2, 52.3, 13.5, 52.6)],
+  zone3: [ring(13.0, 52.0, 14.0, 53.0)],
 });
 
 describe('zones.lookup', () => {
@@ -20,9 +20,9 @@ describe('zones.lookup', () => {
   });
 });
 
-describe('zones.closestOnZone3', () => {
+describe('zones.closestOnOuter', () => {
   it('finds the closest boundary point of zone 3 and its distance', () => {
-    const r = zones.closestOnZone3([14.5, 52.5]);
+    const r = zones.closestOnOuter([14.5, 52.5]);
     expect(r.point[0]).toBeCloseTo(14.0, 6);
     expect(r.point[1]).toBeCloseTo(52.5, 3);
     expect(r.distanceKm).toBeCloseTo(33.8, 0);

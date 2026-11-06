@@ -1,15 +1,15 @@
-import { pointInPolygon, closestPointOnLine, distanceKm } from './geo.js';
+import { distanceKm } from './geo.js';
+import { inRegion, closestOnRegion } from './region.js';
 
-export function createZones({ zone1, zone2, zone3 }) {
-  const lookup = (pt) => {
-    if (pointInPolygon(zone1, pt)) return 1;
-    if (pointInPolygon(zone2, pt)) return 2;
-    if (pointInPolygon(zone3, pt)) return 3;
-    return 0;
-  };
+export function createZones(rings) {
+  const present = [1, 2, 3].filter((n) => rings[`zone${n}`]);
+  const outer = present.at(-1);
+  const outerRings = rings[`zone${outer}`];
 
-  const closestOnZone3 = (pt) => {
-    const { point, distanceKm: d } = closestPointOnLine(zone3, pt);
+  const lookup = (pt) => present.find((n) => inRegion(rings[`zone${n}`], pt)) ?? 0;
+
+  const closestOnOuter = (pt) => {
+    const { point, distanceKm: d } = closestOnRegion(outerRings, pt);
     return { point, distanceKm: d };
   };
 
@@ -29,5 +29,5 @@ export function createZones({ zone1, zone2, zone3 }) {
     return { distanceKm: sum, lastOutside, firstInside };
   };
 
-  return { lookup, closestOnZone3, outsideStretch, rings: { zone1, zone2, zone3 } };
+  return { lookup, outer, closestOnOuter, outsideStretch, rings: { ...rings } };
 }

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "zone": "node scripts/zone.mjs"
   },
   "dependencies": {
     "ol": "^10.11.0"
