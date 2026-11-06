@@ -39,7 +39,7 @@ class FitZonesControl extends Control {
 
 export function createMap(target, { zones: { zone1, zone2, zone3 }, start, colors, widths }) {
   const zoneGeometry = new Polygon([ring(zone3), ring(zone2)]);
-  const zones = vectorLayer(null, '<a href="https://www.klupea.de" target="_blank" rel="noopener">Programm: © 2015 KLUPEA GmbH</a>');
+  const zones = vectorLayer(null, '<a href="https://www.klupea.de" target="_blank" rel="noopener">Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH</a>');
   zones.source.addFeatures([
     new Feature({ geometry: zoneGeometry, style: 3 }),
     new Feature({ geometry: new Polygon([ring(zone2), ring(zone1)]), style: 2 }),

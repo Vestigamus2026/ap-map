@@ -180,10 +180,13 @@ test('credits list the new services', async ({ page }) => {
   await page.goto('/#about');
   const about = page.locator('#about');
   await expect(page.locator('#about h1')).toHaveText('Credits');
+  await expect(about).toContainText('© Sven Hering 2015, Neuaufbau 2026');
   await expect(about).toContainText('Nominatim');
   await expect(about).toContainText('Valhalla');
   await expect(about).toContainText('OpenLayers');
   await expect(about).not.toContainText('MapQuest');
+  await page.goto('/#show_map');
+  await expect(page.locator('#show_map .ol-attribution ul')).toContainText('Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH');
 });
 
 test('a cancelled GPS lookup does not set the destination later', async ({ page }) => {
