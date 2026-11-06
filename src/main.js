@@ -168,6 +168,7 @@ $('kmform').addEventListener('submit', (e) => {
 
 /* GPS */
 let watchId = null;
+let gpsRequest = 0;
 const gpsInfo = (text, point) => addResult({ text, coordinates: point && coordsIfWanted(point) }, 'gpsinfo');
 const toPoint = (pos) => [pos.coords.longitude, pos.coords.latitude];
 
@@ -178,6 +179,7 @@ function gpsButtons(mode) {
 }
 
 function stopTracking() {
+  gpsRequest++;
   if (watchId != null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
 }
@@ -188,12 +190,15 @@ function locateOnce(onPoint) {
     return;
   }
   gpsButtons('wait');
+  const request = ++gpsRequest;
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      if (request !== gpsRequest) return;
       gpsButtons('idle');
       onPoint(toPoint(pos));
     },
     (err) => {
+      if (request !== gpsRequest) return;
       gpsButtons('idle');
       gpsInfo(`Position nicht verfügbar: ${err.message}`);
     },

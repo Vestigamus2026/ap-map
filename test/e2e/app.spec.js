@@ -184,3 +184,22 @@ test('credits list the new services', async ({ page }) => {
   await expect(about).toContainText('OpenLayers');
   await expect(about).not.toContainText('MapQuest');
 });
+
+test('a cancelled GPS lookup does not set the destination later', async ({ page }) => {
+  await mockServices(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('gebietskarte_settings', 'show_gps,true');
+    const pending = [];
+    window.__resolveGps = () => pending.splice(0).forEach((ok) => ok({ coords: { latitude: 52.3471, longitude: 14.5506 } }));
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition: (ok) => pending.push(ok), watchPosition: () => 1, clearWatch: () => {} },
+    });
+  });
+  await page.goto('/#gpstools');
+  await page.click('#gps_getpos');
+  await page.click('#gps_cancel');
+  await page.evaluate(() => window.__resolveGps());
+  await expect(page.locator('#gps_getpos')).toBeVisible();
+  await expect(page.locator('#gpsinfo')).not.toContainText('Ziel-Position gesetzt');
+  await expect(page.locator('#location')).toHaveValue('');
+});
