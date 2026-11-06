@@ -137,3 +137,23 @@ describe('parseConfig review fixes', () => {
     expect(parseConfig({ ...minimal(), zones }).zones.zone2).toEqual(ring(13.0, 52.3, 13.5, 52.6));
   });
 });
+
+describe('colour check', () => {
+  it('accepts modern CSS colour functions', () => {
+    for (const c of ['hwb(0 0% 0%)', 'lab(50% 40 59.5)', 'lch(52% 72 50 / 0.5)', 'oklch(0.6 0.2 30)', 'color(srgb 1 0 0)']) {
+      expect(parseConfig({ ...minimal(), colors: { fastestRoute: c } }).colors.fastestRoute).toBe(c);
+    }
+  });
+
+  it('asks the browser when it can (CSS.supports)', () => {
+    const supports = vi.fn((prop, v) => v === 'browser-only-colour');
+    vi.stubGlobal('CSS', { supports });
+    try {
+      expect(parseConfig({ ...minimal(), colors: { fastestRoute: 'browser-only-colour' } }).colors.fastestRoute).toBe('browser-only-colour');
+      expect(supports).toHaveBeenCalledWith('color', 'browser-only-colour');
+      expect(errorOf({ ...minimal(), colors: { fastestRoute: 'red' } })).toBe('"colors.fastestRoute" muss ein Farbwert sein.');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

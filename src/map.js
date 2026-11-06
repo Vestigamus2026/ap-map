@@ -91,7 +91,11 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
     const home = fromLonLat(start);
     const zonesExtent = zoneGeometry.getExtent();
     if (!containsCoordinate(zonesExtent, home)) {
-      view.fit(extend(boundingExtent([home]), zonesExtent), { padding: [40, 40, 40, 40] });
+      const both = extend(boundingExtent([home]), zonesExtent);
+      const [w, h] = map.getSize();
+      const zoom = view.getZoomForResolution(view.getResolutionForExtent(both, [w - 80, h - 80]));
+      if (zoom < view.getMinZoom()) view.setMinZoom(Math.max(0, Math.floor(zoom)));
+      view.fit(both, { padding: [40, 40, 40, 40] });
     }
   });
 

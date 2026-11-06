@@ -329,6 +329,20 @@ test.describe('Einstellungsdatei config.json', () => {
     await expect.poll(km).toBeGreaterThanOrEqual(zonesOnly * 4);
   });
 
+  test('zooms out further than usual when home is very far from the zones', async ({ page }) => {
+    await mockServices(page);
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, home: [-9.14, 38.72], colors: { fastestRoute: 'hwb(0 0% 0%)' } } }));
+    await page.goto('/');
+    const bar = page.locator('.ol-scale-line-inner');
+    await expect(bar).toContainText('km');
+    // Hamburg to Lisbon needs more than 4 km per pixel on a 414 px wide screen; zoom level 5 gives about 3.4.
+    await expect.poll(async () => {
+      const km = Number((await bar.textContent()).replace(/[^0-9.]/g, ''));
+      const px = await bar.evaluate((el) => el.getBoundingClientRect().width);
+      return km / px;
+    }).toBeGreaterThan(4);
+  });
+
   test('shows a German error for a broken file', async ({ page }) => {
     await mockServices(page);
     await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, home: 'Hamburg' } }));
