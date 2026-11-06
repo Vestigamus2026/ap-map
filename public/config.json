@@ -9,7 +9,7 @@
     "shortestRoute": "rgba(55, 158, 86, 0.6)",
     "fastestRoute": "rgba(237, 26, 26, 0.6)"
   },
-  "widths": { "zone1": 1, "zone2": 1, "zone3": 1, "shortestRoute": 12, "fastestRoute": 12 },
+  "widths": { "zone1": 1, "zone2": 1, "zone3": 1, "shortestRoute": 4, "fastestRoute": 4 },
   "zones": {
     "zone1": [
       [13.2292996,52.5067181],

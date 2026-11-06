@@ -37,7 +37,7 @@ class FitZonesControl extends Control {
   }
 }
 
-export function createMap(target, { zones: { zone1, zone2, zone3 }, start, colors, widths }) {
+export function createMap(target, { zones: { zone1, zone2, zone3 }, start, colors, widths, print = false }) {
   const zoneGeometry = new Polygon([ring(zone3), ring(zone2)]);
   const zones = vectorLayer(null, '<a href="https://www.klupea.de" target="_blank" rel="noopener">Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH</a>');
   zones.source.addFeatures([
@@ -65,10 +65,11 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
       url: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
       attributions: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-Mitwirkende</a>',
       maxZoom: 18,
+      crossOrigin: 'anonymous',
     }),
   });
 
-  const view = new View({ center: fromLonLat(start), zoom: 10, maxZoom: 18, minZoom: 5 });
+  const view = new View({ center: fromLonLat(start), zoom: 10, maxZoom: 18, minZoom: print ? 0 : 5 });
   let defaultResolution = null;
 
   const fitZones = () => view.fit(zoneGeometry, { padding: [20, 20, 20, 20] });
@@ -77,7 +78,10 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
     target,
     layers: [base, zones.layer, routes.fastest.layer, routes.shortest.layer, destination.layer, startMarker.layer, gpsMarker.layer],
     view,
-    controls: defaultControls({ attributionOptions: { collapsible: true } }).extend([new ScaleLine(), new FitZonesControl(fitZones)]),
+    controls: print
+      ? [new ScaleLine({ bar: true, text: true, minWidth: 120 })]
+      : defaultControls({ attributionOptions: { collapsible: true } }).extend([new ScaleLine(), new FitZonesControl(fitZones)]),
+    interactions: print ? [] : undefined,
   });
 
   const setPoint = ({ source }, point) => {
@@ -85,7 +89,7 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
     if (point) source.addFeature(new Feature(new Point(fromLonLat(point))));
   };
 
-  map.once('change:size', () => {
+  if (!print) map.once('change:size', () => {
     fitZones();
     defaultResolution = view.getResolution();
     const home = fromLonLat(start);
@@ -101,6 +105,29 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
 
   return {
     updateSize: () => map.updateSize(),
+    fitAll(points) {
+      const extent = zoneGeometry.getExtent().slice();
+      for (const p of points) extend(extent, boundingExtent([fromLonLat(p)]));
+      view.fit(extent, { padding: [40, 40, 40, 40] });
+    },
+    whenRendered: () => new Promise((resolve) => { map.once('rendercomplete', resolve); map.render(); }),
+    toCanvas() {
+      const layers = [...map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer')].filter((c) => c.width > 0);
+      const [w, h] = map.getSize();
+      const scale = layers.length ? layers[0].width / layers[0].getBoundingClientRect().width : 1;
+      const out = document.createElement('canvas');
+      out.width = Math.round(w * scale);
+      out.height = Math.round(h * scale);
+      const ctx = out.getContext('2d');
+      for (const canvas of layers) {
+        const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
+        ctx.globalAlpha = opacity === '' ? 1 : Number(opacity);
+        const m = canvas.style.transform.match(/^matrix\(([^(]*)\)$/)?.[1].split(',').map(Number) || [1, 0, 0, 1, 0, 0];
+        ctx.setTransform(...m.map((v) => v * scale));
+        ctx.drawImage(canvas, 0, 0);
+      }
+      return out;
+    },
     setStart: (p) => setPoint(startMarker, p),
     setDestination: (p) => setPoint(destination, p),
     setGps: (p) => setPoint(gpsMarker, p),

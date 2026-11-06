@@ -5,10 +5,11 @@ import { buildMotorways } from './lib/motorways.js';
 import { createGeoApi } from './lib/geoapi.js';
 import { runSearch } from './lib/search.js';
 import { buildResultEntries } from './lib/results.js';
-import { formatKm, formatCoordinates } from './lib/format.js';
+import { formatKm, formatCoordinates, formatLocation } from './lib/format.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings.js';
 import { createMap } from './map.js';
 import { loadConfig } from './lib/config.js';
+import { saveLastSearch, clearLastSearch } from './lib/print.js';
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -139,6 +140,7 @@ async function search({ query, point, target }) {
         state.target = null;
         state.destination = null;
         map.setDestination(null);
+        clearLastSearch(storage);
       }
       return;
     }
@@ -148,6 +150,13 @@ async function search({ query, point, target }) {
     fitWhenVisible([state.start, state.destination]);
     if (result.shortest?.points && state.settings.route_shortest) map.setRoute('shortest', result.shortest.points);
     if (result.fastest?.points && state.settings.route_fastest) map.setRoute('fastest', result.fastest.points);
+    saveLastSearch(storage, {
+      start: state.start,
+      destination: state.destination,
+      label: result.target.location ? formatLocation(result.target.location) : formatCoordinates(state.destination),
+      shortest: (state.settings.route_shortest && result.shortest?.points) || null,
+      fastest: (state.settings.route_fastest && result.fastest?.points) || null,
+    });
     if (result.motorway) {
       fillMotorways(result.motorway.section.bab, result.motorway.section.key);
       $('km').value = (Math.round(result.motorway.km * 10) / 10).toString();

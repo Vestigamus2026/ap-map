@@ -42,6 +42,17 @@ npx playwright install chromium   # einmalig
 npm run test:e2e   # Browser-Tests (Playwright, Dienste gemockt)
 ```
 
+## Druckansicht `print.html`
+
+Über „Drucken“ auf der Kartenseite öffnet sich `print.html` in einem neuen Tab. Die Seite liest dieselbe
+`config.json` und zeigt Kartenname, Datum, die Zonen, die Startposition, eine Legende, einen Maßstab und die Quellen.
+Nach einer erfolgreichen Suche kommen Ziel und eingezeichnete Routen dazu (localStorage-Schlüssel
+`gebietskarte_last_search`; eine fehlgeschlagene Suche entfernt sie wieder).
+
+- Papier A4 bis A0, hoch oder quer; die Seite setzt die passende `@page`-Größe (10 mm Rand).
+- „Drucken“ wartet, bis die Karte gezeichnet ist, und öffnet den Druckdialog (auch „Als PDF speichern“).
+- „Als PNG speichern“ erzeugt ein Bild des Blatts in Bildschirmauflösung (96 dpi × Pixelverhältnis des Geräts).
+
 ## Build und Deployment
 
 ```bash
