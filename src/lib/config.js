@@ -20,17 +20,16 @@ const ARG = `${NUM}%?`;
 const HUE = `${NUM}(?:deg|grad|rad|turn)?`;
 const colorFn = (name, first) =>
   new RegExp(`^${name}a?\\(\\s*${first}(?:\\s*,\\s*${ARG}\\s*,\\s*${ARG}(?:\\s*,\\s*${ARG})?|\\s+${ARG}\\s+${ARG}(?:\\s*/\\s*${ARG})?)\\s*\\)$`, 'i');
-const SPACE_ARG = `${NUM}(?:%|deg|grad|rad|turn)?`;
-const SPACE_ARGS = `${SPACE_ARG}(?:\\s+${SPACE_ARG}){2}(?:\\s*/\\s*${ARG})?`;
 const COLOR_PATTERNS = [
   /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
   colorFn('rgb', ARG),
   colorFn('hsl', HUE),
-  new RegExp(`^(?:hwb|lab|lch|oklab|oklch)\\(\\s*${SPACE_ARGS}\\s*\\)$`, 'i'),
-  new RegExp(`^color\\(\\s*[a-z0-9-]+\\s+${SPACE_ARGS}\\s*\\)$`, 'i'),
 ];
+const CONTEXT_DEPENDENT = /\b(?:var|env|attr)\(|^(?:currentcolor|inherit|initial|unset|revert|revert-layer)$/i;
 const isCssColor = (v) =>
-  globalThis.CSS?.supports
+  CONTEXT_DEPENDENT.test(v)
+    ? false
+    : globalThis.CSS?.supports
     ? globalThis.CSS.supports('color', v)
     : NAMED_COLORS.has(v.toLowerCase()) || COLOR_PATTERNS.some((re) => re.test(v));
 

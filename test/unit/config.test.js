@@ -139,9 +139,21 @@ describe('parseConfig review fixes', () => {
 });
 
 describe('colour check', () => {
-  it('accepts modern CSS colour functions', () => {
-    for (const c of ['hwb(0 0% 0%)', 'lab(50% 40 59.5)', 'lch(52% 72 50 / 0.5)', 'oklch(0.6 0.2 30)', 'color(srgb 1 0 0)']) {
-      expect(parseConfig({ ...minimal(), colors: { fastestRoute: c } }).colors.fastestRoute).toBe(c);
+  it('without CSS.supports accepts only portable notations', () => {
+    for (const c of ['hwb(0 0% 0%)', 'lab(50% 40 59.5)', 'oklch(0.6 0.2 30)', 'color(srgb 1 0 0)']) {
+      expect(errorOf({ ...minimal(), colors: { fastestRoute: c } })).toBe('"colors.fastestRoute" muss ein Farbwert sein.');
+    }
+  });
+
+  it('rejects context-dependent values even if the browser accepts them', () => {
+    vi.stubGlobal('CSS', { supports: () => true });
+    try {
+      for (const c of ['var(--route-red)', 'currentColor', 'inherit', 'initial', 'unset', 'revert', 'rgb(var(--r) 0 0)', 'env(x)']) {
+        expect(errorOf({ ...minimal(), colors: { fastestRoute: c } })).toBe('"colors.fastestRoute" muss ein Farbwert sein.');
+      }
+      expect(parseConfig({ ...minimal(), colors: { fastestRoute: 'hwb(0 0% 0%)' } }).colors.fastestRoute).toBe('hwb(0 0% 0%)');
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 
