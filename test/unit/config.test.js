@@ -110,3 +110,30 @@ describe('public/config.json', () => {
     expect([c.zones.zone1.length, c.zones.zone2.length, c.zones.zone3.length]).toEqual([27, 12, 11]);
   });
 });
+
+describe('parseConfig review fixes', () => {
+  it('accepts CSS colour notations and rejects unknown colour names', () => {
+    for (const c of ['#00f', '#0000ff80', 'blue', 'RebeccaPurple', 'transparent', 'rgb(0, 0, 255)', 'rgba(0,0,255,0.5)', 'rgb(0 0 255 / 50%)', 'hsl(120, 50%, 50%)', 'hsla(120deg 50% 50% / 0.3)']) {
+      expect(parseConfig({ ...minimal(), colors: { fastestRoute: c } }).colors.fastestRoute).toBe(c);
+    }
+    for (const c of ['not-a-color', '#12345', 'rgb(0, 0)', 'rgb(a, b, c)', 'url(x)']) {
+      expect(errorOf({ ...minimal(), colors: { fastestRoute: c } })).toBe('"colors.fastestRoute" muss ein Farbwert sein.');
+    }
+    expect(errorOf({ ...minimal(), colors: { zone3: { border: 'reed' } } })).toBe('"colors.zone3.border" muss ein Farbwert sein.');
+  });
+
+  it('rejects an inner zone whose edge leaves a concave outer zone through its corners', () => {
+    const zones = {
+      zone3: [[0, 0], [10, 0], [10, 10], [6, 10], [6, 8], [5, 5], [4, 8], [4, 10], [0, 10], [0, 0]],
+      zone2: [[3, 8], [7, 8], [5, 3], [3, 8]],
+      zone1: [[4.9, 3.9], [5.1, 3.9], [5.0, 4.2], [4.9, 3.9]],
+    };
+    expect(errorOf({ ...minimal(), home: [5, 1], zones })).toBe('Zone 2 muss vollständig in Zone 3 liegen.');
+  });
+
+  it('allows inner zones that touch the outer border', () => {
+    const z = minimal().zones;
+    const zones = { ...z, zone2: ring(13.0, 52.3, 13.5, 52.6), zone1: ring(13.0, 52.4, 13.4, 52.5) };
+    expect(parseConfig({ ...minimal(), zones }).zones.zone2).toEqual(ring(13.0, 52.3, 13.5, 52.6));
+  });
+});

@@ -312,6 +312,23 @@ test.describe('Einstellungsdatei config.json', () => {
     await expect(shortest).toHaveCSS('background-color', 'rgb(0, 0, 255)');
   });
 
+  test('opens with both the zones and a home position outside of them in view', async ({ page }) => {
+    await mockServices(page);
+    const km = async () => {
+      const text = await page.locator('.ol-scale-line-inner').textContent();
+      return Number(text.replace(/[^0-9.]/g, '')) * (text.includes(' m') && !text.includes('km') ? 0.001 : 1);
+    };
+    await page.route('**/config.json', (route) => route.fulfill({ json: custom }));
+    await page.goto('/');
+    await expect(page.locator('.ol-scale-line-inner')).toContainText('m');
+    const zonesOnly = await km();
+    await page.unroute('**/config.json');
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, home: [11.58, 48.14] } }));
+    await page.reload();
+    await expect(page.locator('.ol-scale-line-inner')).toContainText('m');
+    await expect.poll(km).toBeGreaterThanOrEqual(zonesOnly * 4);
+  });
+
   test('shows a German error for a broken file', async ({ page }) => {
     await mockServices(page);
     await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, home: 'Hamburg' } }));

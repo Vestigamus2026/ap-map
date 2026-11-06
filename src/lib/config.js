@@ -12,6 +12,17 @@ export const DEFAULT_COLORS = {
 
 export const DEFAULT_WIDTHS = { zone1: 1, zone2: 1, zone3: 1, shortestRoute: 12, fastestRoute: 12 };
 
+const NAMED_COLORS = new Set(
+  'aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen transparent'.split(' '),
+);
+const NUM = '[+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[+-]?\\d+)?';
+const ARG = `${NUM}%?`;
+const HUE = `${NUM}(?:deg|grad|rad|turn)?`;
+const colorFn = (name, first) =>
+  new RegExp(`^${name}a?\\(\\s*${first}(?:\\s*,\\s*${ARG}\\s*,\\s*${ARG}(?:\\s*,\\s*${ARG})?|\\s+${ARG}\\s+${ARG}(?:\\s*/\\s*${ARG})?)\\s*\\)$`, 'i');
+const COLOR_PATTERNS = [/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i, colorFn('rgb', ARG), colorFn('hsl', HUE)];
+const isCssColor = (v) => NAMED_COLORS.has(v.toLowerCase()) || COLOR_PATTERNS.some((re) => re.test(v));
+
 const ZONES = ['zone1', 'zone2', 'zone3'];
 const ROUTES = ['shortestRoute', 'fastestRoute'];
 
@@ -27,7 +38,7 @@ const isLatLng = (p) => Array.isArray(p) && p.length === 2 && isNum(p[0], -90, 9
 
 function color(value, fallback, name) {
   if (value === undefined) return fallback;
-  if (typeof value !== 'string' || !value.trim()) fail(`"${name}" muss ein Farbwert sein.`);
+  if (typeof value !== 'string' || !isCssColor(value.trim())) fail(`"${name}" muss ein Farbwert sein.`);
   return value;
 }
 
@@ -66,16 +77,46 @@ function parseRing(points, name) {
   return ring;
 }
 
-function segmentsCross([a, b], [c, d]) {
-  const side = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
-  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+
+function onSegment(p, a, b) {
+  if (Math.abs(cross(a, b, p)) > 1e-12) return false;
+  return Math.min(a[0], b[0]) - 1e-12 <= p[0] && p[0] <= Math.max(a[0], b[0]) + 1e-12
+    && Math.min(a[1], b[1]) - 1e-12 <= p[1] && p[1] <= Math.max(a[1], b[1]) + 1e-12;
+}
+
+function insideOrOn(ring, p) {
+  for (let i = 1; i < ring.length; i++) if (onSegment(p, ring[i - 1], ring[i])) return true;
+  return pointInPolygon(ring, p);
+}
+
+// Parameters t in (0, 1) where segment a-b touches or crosses segment c-d.
+function cutsOnSegment(a, b, c, d) {
+  const r = [b[0] - a[0], b[1] - a[1]];
+  const s = [d[0] - c[0], d[1] - c[1]];
+  const q = [c[0] - a[0], c[1] - a[1]];
+  const denom = r[0] * s[1] - r[1] * s[0];
+  if (Math.abs(denom) < 1e-15) {
+    if (Math.abs(q[0] * r[1] - q[1] * r[0]) > 1e-15) return [];
+    const rr = r[0] * r[0] + r[1] * r[1];
+    return [c, d].map((p) => ((p[0] - a[0]) * r[0] + (p[1] - a[1]) * r[1]) / rr).filter((t) => t > 0 && t < 1);
+  }
+  const t = (q[0] * s[1] - q[1] * s[0]) / denom;
+  const u = (q[0] * r[1] - q[1] * r[0]) / denom;
+  return t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9 ? [t] : [];
 }
 
 function ringInside(inner, outer) {
-  if (!inner.every((p) => pointInPolygon(outer, p))) return false;
+  if (!inner.every((p) => insideOrOn(outer, p))) return false;
   for (let i = 1; i < inner.length; i++) {
-    for (let j = 1; j < outer.length; j++) {
-      if (segmentsCross([inner[i - 1], inner[i]], [outer[j - 1], outer[j]])) return false;
+    const [a, b] = [inner[i - 1], inner[i]];
+    const ts = [0, 1];
+    for (let j = 1; j < outer.length; j++) ts.push(...cutsOnSegment(a, b, outer[j - 1], outer[j]));
+    ts.sort((x, y) => x - y);
+    for (let k = 1; k < ts.length; k++) {
+      if (ts[k] - ts[k - 1] < 1e-9) continue;
+      const m = (ts[k] + ts[k - 1]) / 2;
+      if (!insideOrOn(outer, [a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m])) return false;
     }
   }
   return true;

@@ -8,7 +8,7 @@ import XYZ from 'ol/source/XYZ.js';
 import VectorSource from 'ol/source/Vector.js';
 import { Polygon, Point, LineString } from 'ol/geom.js';
 import { fromLonLat } from 'ol/proj.js';
-import { boundingExtent } from 'ol/extent.js';
+import { boundingExtent, containsCoordinate, extend } from 'ol/extent.js';
 import { Style, Stroke, Fill, Icon } from 'ol/style.js';
 import { defaults as defaultControls, ScaleLine, Control } from 'ol/control.js';
 
@@ -88,6 +88,11 @@ export function createMap(target, { zones: { zone1, zone2, zone3 }, start, color
   map.once('change:size', () => {
     fitZones();
     defaultResolution = view.getResolution();
+    const home = fromLonLat(start);
+    const zonesExtent = zoneGeometry.getExtent();
+    if (!containsCoordinate(zonesExtent, home)) {
+      view.fit(extend(boundingExtent([home]), zonesExtent), { padding: [40, 40, 40, 40] });
+    }
   });
 
   return {
