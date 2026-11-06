@@ -25,10 +25,12 @@ async function analyseRoute({ start, target, shortest, withOutside, withExit, ap
   return { ...route, outside };
 }
 
-export async function runSearch({ query, point, start, settings, api, zones, motorways = null, extent }) {
+export async function runSearch({ query, point, target: resolved = null, start, settings, api, zones, motorways = null, extent }) {
   let target;
-  const typed = point == null;
-  if (typed) {
+  const typed = point == null && resolved == null;
+  if (resolved) {
+    target = resolved;
+  } else if (typed) {
     const text = (query || '').trim();
     if (!text) return { ok: false, message: MSG_CHECK_PLACE };
     let location;
@@ -45,7 +47,7 @@ export async function runSearch({ query, point, start, settings, api, zones, mot
 
   const zone = zones.lookup(target.point);
   const outsideAll = zone === 0;
-  const motorway = typed && settings.show_bab && motorways ? motorways.locate(target.point) : null;
+  const motorway = (typed || target.location) && settings.show_bab && motorways ? motorways.locate(target.point) : null;
 
   const closestTask = (async () => {
     if (!(settings.closest && outsideAll)) return null;

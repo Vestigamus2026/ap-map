@@ -143,6 +143,20 @@ describe('runSearch', () => {
     expect(r.zone).toBe(2);
   });
 
+  it('reuses an already resolved target without geocoding again', async () => {
+    const motorways = buildMotorways({
+      A9_up: { name: 'BAB 9', bab: 9, ascending: true, offset: 5, shape: encodePolyline([[14.5, 52.4], [14.5, 52.6]], 6) },
+    });
+    const api = fakeApi();
+    const location = { point: outside, city: 'Frankfurt (Oder)', quality: 'CITY', qualityCode: 'city' };
+    const r = await runSearch({ target: { point: outside, location }, start, settings: settings({ show_bab: true }), api, zones, motorways });
+    expect(api.geocode).not.toHaveBeenCalled();
+    expect(r.ok).toBe(true);
+    expect(r.target.location).toEqual(location);
+    expect(r.motorway.section.key).toBe('A9_up');
+    expect(r.shortest.distanceKm).toBe(100);
+  });
+
   it('detects a point on a motorway for typed searches when the motorway tool is on', async () => {
     const motorways = buildMotorways({
       A9_up: { name: 'BAB 9', bab: 9, ascending: true, offset: 5, shape: encodePolyline([[14.5, 52.4], [14.5, 52.6]], 6) },

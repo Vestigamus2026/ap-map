@@ -25,7 +25,7 @@ const motorways = buildMotorways(motorwayData);
 const api = createGeoApi();
 const map = createMap($('map'), { zone1, zone2, zone3, start: defaultStart });
 
-const state = { start: defaultStart, destination: null, busy: false, settings: loadSettings(storage) };
+const state = { start: defaultStart, target: null, destination: null, busy: false, settings: loadSettings(storage) };
 map.setStart(state.start);
 
 /* Seiten */
@@ -110,23 +110,27 @@ fillMotorways();
 $('bab').addEventListener('change', (e) => fillMotorways(e.target.value));
 
 /* Suche */
-async function search({ query, point }) {
-  if (state.busy) return;
+let searchGen = 0;
+async function search({ query, point, target }) {
+  const gen = ++searchGen;
   setBusy(true);
   map.setRoute('shortest', null);
   map.setRoute('fastest', null);
   try {
     const result = await runSearch({
-      query, point, start: state.start, settings: state.settings, api, zones, motorways, extent: preferredExtent,
+      query, point, target, start: state.start, settings: state.settings, api, zones, motorways, extent: preferredExtent,
     });
+    if (gen !== searchGen) return;
     for (const entry of buildResultEntries(result, state.settings)) addResult(entry);
     if (!result.ok) {
       if (query != null) {
+        state.target = null;
         state.destination = null;
         map.setDestination(null);
       }
       return;
     }
+    state.target = result.target;
     state.destination = result.target.point;
     map.setDestination(state.destination);
     fitWhenVisible([state.start, state.destination]);
@@ -137,7 +141,7 @@ async function search({ query, point }) {
       $('km').value = (Math.round(result.motorway.km * 10) / 10).toString();
     }
   } finally {
-    setBusy(false);
+    if (gen === searchGen) setBusy(false);
   }
 }
 
@@ -222,9 +226,9 @@ $('gps_setpos').addEventListener('click', () =>
     state.start = point;
     map.setStart(point);
     gpsInfo('Start-Position gesetzt', point);
-    if (state.destination) {
+    if (state.target) {
       $('result').replaceChildren();
-      search({ point: state.destination });
+      search({ target: state.target });
     }
   }),
 );
@@ -252,8 +256,8 @@ $('gps_reset').addEventListener('click', () => {
   map.setGps(null);
   $('gpsinfo').replaceChildren();
   gpsInfo('Werte zurückgesetzt');
-  if (state.destination) {
+  if (state.target) {
     $('result').replaceChildren();
-    search({ point: state.destination });
+    search({ target: state.target });
   }
 });
