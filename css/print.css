@@ -1,0 +1,8 @@
+#gps, #settings, #kmform, #gpstools, #about, .rotate-north, .button, .back, .blueButton,#search img {
+	display: none;
+}
+
+li,input[type="text"] {
+	list-style-type: none;
+	border: none;
+}
