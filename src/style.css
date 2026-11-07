@@ -62,6 +62,7 @@ button { font: inherit; cursor: pointer; }
 a { color: #194fdb; }
 #about img { vertical-align: middle; max-height: 20px; }
 .rotate-north { top: 65px; left: 0.5em; }
+.ol-touch .rotate-north { top: 87px; }
 .ol-scale-line { bottom: 8px; left: 8px; }
 @media print {
   .toolbar, .ol-control { display: none !important; }
