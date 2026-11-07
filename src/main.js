@@ -87,6 +87,21 @@ applySettings();
 /* Ergebnisliste */
 function renderEntry(entry) {
   const li = document.createElement('li');
+  if (entry.choice) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'choice';
+    button.textContent = entry.text;
+    button.addEventListener('click', () => {
+      if (state.busy) return;
+      $('location').value = entry.text;
+      $('result').replaceChildren();
+      $('km').value = '';
+      search({ target: { point: entry.choice.point, location: entry.choice } });
+    });
+    li.append(button);
+    return li;
+  }
   if (entry.highlight) li.className = 'highlight';
   li.append(entry.text);
   if (entry.km != null) {

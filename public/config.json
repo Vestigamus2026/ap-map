@@ -9,6 +9,13 @@
     "shortestRoute": "rgba(55, 158, 86, 0.6)",
     "fastestRoute": "rgba(237, 26, 26, 0.6)"
   },
+  "printColors": {
+    "zone1": { "fill": "rgba(0, 128, 0, 0.3)", "border": "green" },
+    "zone2": { "fill": "rgba(215, 179, 104, 0.3)", "border": "rgba(215, 179, 104, 1)" },
+    "zone3": { "fill": "rgba(255, 0, 0, 0.3)", "border": "red" },
+    "shortestRoute": "rgba(55, 158, 86, 0.6)",
+    "fastestRoute": "rgba(237, 26, 26, 0.6)"
+  },
   "widths": { "zone1": 1, "zone2": 1, "zone3": 1, "shortestRoute": 4, "fastestRoute": 4 },
   "zones": {
     "zone1": [

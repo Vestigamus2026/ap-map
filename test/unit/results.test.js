@@ -87,3 +87,21 @@ describe('buildResultEntries', () => {
     expect(e.map(entryText)).toContain('Punkt auf der Autobahn A3 bei km 12.3! Kilometer und Autobahn eingetragen.');
   });
 });
+
+describe('several hits', () => {
+  it('lists the hits to choose from', () => {
+    const hits = [
+      { name: 'Netto', street: 'Böllberger Weg 168', postalCode: '06128', city: 'Halle (Saale)', point: [11.95, 51.46] },
+      { street: 'Industriestraße 116', city: 'Halle (Saale)', point: [11.97, 51.43] },
+      { name: 'Halle (Saale)', city: 'Halle (Saale)', point: [11.97, 51.48] },
+    ];
+    const e = buildResultEntries({ ok: false, message: 'Mehrere Treffer, bitte auswählen:', choices: hits }, DEFAULT_SETTINGS);
+    expect(e.map(entryText)).toEqual([
+      'Mehrere Treffer, bitte auswählen:',
+      'Netto, Böllberger Weg 168, 06128 Halle (Saale)',
+      'Industriestraße 116, Halle (Saale)',
+      'Halle (Saale)',
+    ]);
+    expect(e[1].choice).toBe(hits[0]);
+  });
+});

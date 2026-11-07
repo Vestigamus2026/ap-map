@@ -15,6 +15,11 @@ const QUALITY_DE = {
   POINT: 'Punkt',
 };
 
+export function choiceLabel(location) {
+  const text = formatLocation(location);
+  return location.name && !text.includes(location.name) ? [location.name, text].filter(Boolean).join(', ') : text;
+}
+
 export function entryText(entry) {
   const main = entry.text + (entry.km != null ? formatKm(entry.km) : '');
   return entry.coordinates ? `${main} ${entry.coordinates}` : main;
@@ -39,7 +44,9 @@ function routeEntry(title, color, route, settings, outer) {
 }
 
 export function buildResultEntries(result, settings, colors = { shortestRoute: SHORTEST_COLOR, fastestRoute: FASTEST_COLOR }) {
-  if (!result.ok) return [{ text: result.message }];
+  if (!result.ok) {
+    return [{ text: result.message }, ...(result.choices || []).map((location) => ({ text: choiceLabel(location), choice: location }))];
+  }
   const coords = (p) => (settings.show_coordinaten && p ? formatCoordinates(p) : undefined);
   const entries = [];
   const outer = result.outerZone ?? 3;

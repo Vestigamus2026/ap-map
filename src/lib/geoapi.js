@@ -117,19 +117,23 @@ export function createGeoApi({
     return throttled(() => getJson(url));
   };
 
-  async function geocode(text, { extent } = {}) {
+  async function geocodeAll(text, { extent, limit = 10 } = {}) {
     const point = parseCoordinates(text);
-    if (point) return emptyLocation(point, 'POINT', 'coordinates');
-    const params = { q: text, limit: '1', countrycodes: countryCodes };
+    if (point) return [emptyLocation(point, 'POINT', 'coordinates')];
+    const params = { q: text, limit: String(limit), countrycodes: countryCodes };
     if (extent) {
       const [[north, west], [south, east]] = extent;
       params.viewbox = [west, north, east, south].join(',');
     }
     const results = await nominatim('search', params);
-    const place = Array.isArray(results) ? results[0] : null;
-    if (!place) return null;
-    const location = normalizePlace(place);
-    return location.quality === 'COUNTRY' ? null : location;
+    return (Array.isArray(results) ? results : [])
+      .map((place) => ({ ...normalizePlace(place), ...(place.name ? { name: place.name } : {}) }))
+      .filter((location) => location.quality !== 'COUNTRY');
+  }
+
+  async function geocode(text, { extent } = {}) {
+    const [location] = await geocodeAll(text, { extent, limit: 1 });
+    return location ?? null;
   }
 
   async function reverse([lng, lat]) {
@@ -158,5 +162,5 @@ export function createGeoApi({
     };
   }
 
-  return { geocode, reverse, route };
+  return { geocode, geocodeAll, reverse, route };
 }

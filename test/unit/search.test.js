@@ -17,7 +17,7 @@ const inZone2 = [13.25, 52.35];
 
 function fakeApi(overrides = {}) {
   return {
-    geocode: vi.fn(async (q) => (q === 'nirgendwo' ? null : { point: outside, city: 'Frankfurt (Oder)', quality: 'CITY', qualityCode: 'city' })),
+    geocodeAll: vi.fn(async (q) => (q === 'nirgendwo' ? [] : [{ point: outside, city: 'Frankfurt (Oder)', quality: 'CITY', qualityCode: 'city' }])),
     reverse: vi.fn(async (p) => ({ point: p, city: 'Ausstieg', countryCode: 'DE' })),
     route: vi.fn(async (from, to, { shortest } = {}) => ({
       distanceKm: shortest ? 100 : 120,
@@ -35,7 +35,7 @@ describe('runSearch', () => {
     const api = fakeApi();
     const r = await runSearch({ query: '  ', start, settings: settings(), api, zones });
     expect(r).toEqual({ ok: false, message: 'Bitte Ort prüfen!' });
-    expect(api.geocode).not.toHaveBeenCalled();
+    expect(api.geocodeAll).not.toHaveBeenCalled();
   });
 
   it('fails with "Bitte Ort prüfen!" when the address is unknown', async () => {
@@ -44,7 +44,7 @@ describe('runSearch', () => {
   });
 
   it('reports a service outage instead of crashing', async () => {
-    const api = fakeApi({ geocode: vi.fn(async () => { throw new Error('offline'); }) });
+    const api = fakeApi({ geocodeAll: vi.fn(async () => { throw new Error('offline'); }) });
     const r = await runSearch({ query: 'Potsdam', start, settings: settings(), api, zones });
     expect(r.ok).toBe(false);
     expect(r.message).toBe('Adresssuche zurzeit nicht möglich. Bitte später erneut versuchen.');
@@ -83,7 +83,7 @@ describe('runSearch', () => {
   });
 
   it('skips the outside calculation inside a zone', async () => {
-    const api = fakeApi({ geocode: vi.fn(async () => ({ point: inZone2 })) });
+    const api = fakeApi({ geocodeAll: vi.fn(async () => [{ point: inZone2 }]) });
     const r = await runSearch({ query: 'x', start, settings: settings({ show_endpoints: true, closest: true }), api, zones });
     expect(r.zone).toBe(2);
     expect(r.shortest.outside).toBeNull();
@@ -138,7 +138,7 @@ describe('runSearch', () => {
   it('uses a given point without geocoding (GPS / motorway kilometre)', async () => {
     const api = fakeApi();
     const r = await runSearch({ point: inZone2, start, settings: settings(), api, zones });
-    expect(api.geocode).not.toHaveBeenCalled();
+    expect(api.geocodeAll).not.toHaveBeenCalled();
     expect(r.target).toEqual({ point: inZone2, location: null });
     expect(r.zone).toBe(2);
   });
@@ -150,7 +150,7 @@ describe('runSearch', () => {
     const api = fakeApi();
     const location = { point: outside, city: 'Frankfurt (Oder)', quality: 'CITY', qualityCode: 'city' };
     const r = await runSearch({ target: { point: outside, location }, start, settings: settings({ show_bab: true }), api, zones, motorways });
-    expect(api.geocode).not.toHaveBeenCalled();
+    expect(api.geocodeAll).not.toHaveBeenCalled();
     expect(r.ok).toBe(true);
     expect(r.target.location).toEqual(location);
     expect(r.motorway.section.key).toBe('A9_up');
@@ -171,5 +171,24 @@ describe('runSearch', () => {
 
     const byPoint = await runSearch({ ...opts, query: undefined, point: outside, settings: settings({ show_bab: true }) });
     expect(byPoint.motorway).toBeNull();
+  });
+});
+
+describe('several hits', () => {
+  const netto = (point, street) => ({ point, name: 'Netto', street, city: 'Halle (Saale)', quality: 'POINT', qualityCode: 'shop' });
+
+  it('asks to choose when the address has several different hits', async () => {
+    const hits = [netto(outside, 'Böllberger Weg 168'), netto(inZone2, 'Industriestraße 116')];
+    const api = fakeApi({ geocodeAll: vi.fn(async () => hits) });
+    const r = await runSearch({ query: 'Netto', start, settings: DEFAULT_SETTINGS, api, zones });
+    expect(r).toEqual({ ok: false, message: 'Mehrere Treffer, bitte auswählen:', choices: hits });
+    expect(api.route).not.toHaveBeenCalled();
+  });
+
+  it('uses the hit directly when all hits are the same place', async () => {
+    const api = fakeApi({ geocodeAll: vi.fn(async () => [netto(inZone2, 'Lutherplatz'), netto(inZone2, 'Lutherplatz')]) });
+    const r = await runSearch({ query: 'Netto', start, settings: DEFAULT_SETTINGS, api, zones });
+    expect(r.ok).toBe(true);
+    expect(r.zone).toBe(2);
   });
 });

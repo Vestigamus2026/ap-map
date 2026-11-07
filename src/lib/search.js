@@ -1,6 +1,9 @@
+import { choiceLabel } from './results.js';
+
 export const MSG_CHECK_PLACE = 'Bitte Ort prüfen!';
 export const MSG_SERVICE_DOWN = 'Adresssuche zurzeit nicht möglich. Bitte später erneut versuchen.';
 export const MSG_NO_ROUTE = 'Keine Route gefunden';
+export const MSG_CHOOSE = 'Mehrere Treffer, bitte auswählen:';
 
 const orNull = (promise) => promise.catch(() => null);
 
@@ -33,14 +36,17 @@ export async function runSearch({ query, point, target: resolved = null, start, 
   } else if (typed) {
     const text = (query || '').trim();
     if (!text) return { ok: false, message: MSG_CHECK_PLACE };
-    let location;
+    let hits;
     try {
-      location = await api.geocode(text, { extent });
+      hits = await api.geocodeAll(text, { extent });
     } catch {
       return { ok: false, message: MSG_SERVICE_DOWN };
     }
-    if (!location) return { ok: false, message: MSG_CHECK_PLACE };
-    target = { point: location.point, location };
+    const labels = hits.map(choiceLabel);
+    const choices = hits.filter((_, i) => labels.indexOf(labels[i]) === i);
+    if (!choices.length) return { ok: false, message: MSG_CHECK_PLACE };
+    if (choices.length > 1) return { ok: false, message: MSG_CHOOSE, choices };
+    target = { point: choices[0].point, location: choices[0] };
   } else {
     target = { point, location: null };
   }
