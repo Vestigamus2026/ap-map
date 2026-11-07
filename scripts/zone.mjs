@@ -1,9 +1,10 @@
 import { readFile, writeFile, rm, rename, realpath, stat, chown, chmod } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone } from '../src/lib/relation.js';
+import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone, deleteConfigZone } from '../src/lib/relation.js';
 
 const USAGE =
-  'Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL> [--toleranz Meter] [--datei public/config.json] [--server Overpass-URL]';
+  'Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL> [--toleranz Meter] [--datei public/config.json] [--server Overpass-URL]\n' +
+  '   oder: npm run zone -- <zone2|zone3> delete [--datei public/config.json]';
 const FLAGS = { '--toleranz': 'tolerance', '--datei': 'file', '--server': 'server' };
 
 function parseArgs(argv) {
@@ -15,10 +16,32 @@ function parseArgs(argv) {
     else return null;
   }
   if (pos.length !== 2 || !/^zone[123]$/.test(pos[0])) return null;
+  if (pos[1] === 'delete') return { ...opts, zone: pos[0], delete: true };
   const id = pos[1].match(/^(?:https?:\/\/(?:www\.)?openstreetmap\.org\/relation\/)?([1-9]\d*)\/?$/)?.[1];
   const tolerance = Number(opts.tolerance);
   if (!id || opts.tolerance === '' || !Number.isFinite(tolerance) || tolerance < 0) return null;
   return { ...opts, zone: pos[0], id, tolerance };
+}
+
+// Neue Fassung vollständig neben das Ziel schreiben (bei Links neben die verlinkte Datei), Besitzer, Gruppe
+// und Rechte übernehmen, dann atomar umbenennen: Leser sehen immer entweder die alte oder die neue Datei.
+async function save(io, file, out) {
+  const target = await io.realpath(file);
+  const { mode, uid, gid } = await io.stat(target);
+  const tmp = `${target}.${process.pid}.tmp`;
+  try {
+    await io.writeFile(tmp, out, { flag: 'wx', mode: 0o600 });
+    try {
+      await io.chown(tmp, uid, gid);
+    } catch (err) {
+      throw new Error(`Besitzer/Gruppe von ${file} lassen sich nicht übernehmen (${err.message}). Als Besitzer der Datei ausführen.`);
+    }
+    await io.chmod(tmp, mode & 0o7777);
+    await io.rename(tmp, target);
+  } catch (err) {
+    await io.rm(tmp, { force: true }).catch(() => {});
+    throw err;
+  }
 }
 
 export async function main(argv, io) {
@@ -26,6 +49,16 @@ export async function main(argv, io) {
   if (!args) {
     io.error(USAGE);
     return 1;
+  }
+  if (args.delete) {
+    try {
+      await save(io, args.file, deleteConfigZone(await io.readFile(args.file, 'utf8'), args.zone));
+      io.log(`${args.zone} gelöscht, gespeichert in ${args.file}`);
+      return 0;
+    } catch (err) {
+      io.error(`Fehler: ${err.message} ${args.file} wurde nicht geändert.`);
+      return 1;
+    }
   }
   let res;
   try {
@@ -52,26 +85,7 @@ export async function main(argv, io) {
     const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
     const text = await io.readFile(args.file, 'utf8');
     const out = updateConfigZone(text, args.zone, zone.rings);
-    // Neue Fassung vollständig neben das Ziel schreiben (bei Links neben die verlinkte Datei), Besitzer, Gruppe
-    // und Rechte übernehmen, dann atomar umbenennen: Leser sehen immer entweder die alte oder die neue Datei.
-    const target = await io.realpath(args.file);
-    const { mode, uid, gid } = await io.stat(target);
-    const tmp = `${target}.${process.pid}.tmp`;
-    try {
-      await io.writeFile(tmp, out, { flag: 'wx', mode: 0o600 });
-      try {
-        await io.chown(tmp, uid, gid);
-      } catch (err) {
-        throw new Error(
-          `Besitzer/Gruppe von ${args.file} lassen sich nicht übernehmen (${err.message}). Als Besitzer der Datei ausführen.`,
-        );
-      }
-      await io.chmod(tmp, mode & 0o7777);
-      await io.rename(tmp, target);
-    } catch (err) {
-      await io.rm(tmp, { force: true }).catch(() => {});
-      throw err;
-    }
+    await save(io, args.file, out);
     io.log(
       `${args.zone} ← ${zone.name} (Relation ${args.id}): ${zone.before} → ${zone.after} Punkte ` +
         `(Toleranz ${args.tolerance} m), gespeichert in ${args.file}`,

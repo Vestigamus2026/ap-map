@@ -82,15 +82,25 @@ Die übrigen Zonen bleiben unverändert. Bei einem Fehler wird die Datei nicht g
 
 **Ganz neues Gebiet:** Weil jede Zone in der nächsten äußeren liegen muss, scheitert der Import, solange die
 alten Zonen 2 und 3 noch woanders liegen (`Fehler: Zone 1 muss vollständig in Zone 2 liegen.`).
-Dann in `public/config.json` die Einträge `"zone2"` und `"zone3"` löschen und von innen nach außen importieren:
+Dann zuerst die alten äußeren Zonen löschen (erst Zone 3, dann Zone 2) und von innen nach außen importieren:
 
 ```bash
+npm run zone -- zone3 delete
+npm run zone -- zone2 delete
 npm run zone -- zone1 <ID der inneren Fläche>
 npm run zone -- zone2 <ID der mittleren Fläche>   # optional
 npm run zone -- zone3 <ID der äußeren Fläche>     # optional
 ```
 
 Fehlende Zonen 2 oder 3 werden dabei neu angelegt.
+
+**Zone löschen:** `npm run zone -- zone3 delete` entfernt Zone 3 aus `public/config.json` (mit `--datei` aus einer
+anderen Datei). Zone 2 lässt sich nur löschen, wenn es keine Zone 3 mehr gibt; Zone 1 kann nicht gelöscht werden,
+weil sie immer angegeben sein muss. Ausgabe:
+
+```text
+zone3 gelöscht, gespeichert in public/config.json
+```
 
 **Optionen:**
 

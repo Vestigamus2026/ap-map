@@ -123,13 +123,13 @@ function insertZone(text, zonesAt, zone, rings) {
   return `${before}${sep}\n${indent}"${zone}": [\n${zoneLines(rings, indent)}\n${indent}]\n${outerIndent}${text.slice(close)}`;
 }
 
-export function replaceZone(text, zone, rings) {
+function findZone(text, zone) {
   const zonesAt = text.search(/"zones"\s*:\s*\{/);
   if (zonesAt < 0) fail('"zones" fehlt in der Einstellungsdatei.');
   const re = new RegExp(`"${zone}"\\s*:\\s*\\[`, 'g');
   re.lastIndex = zonesAt;
   const m = re.exec(text);
-  if (!m) return insertZone(text, zonesAt, zone, rings);
+  if (!m) return { zonesAt };
   const open = m.index + m[0].length - 1;
   let depth = 0;
   let close = open;
@@ -137,9 +137,30 @@ export function replaceZone(text, zone, rings) {
     if (text[close] === '[') depth++;
     else if (text[close] === ']' && --depth === 0) break;
   }
-  const lineStart = text.lastIndexOf('\n', m.index) + 1;
-  const indent = text.slice(lineStart, m.index).match(/^\s*/)[0];
+  return { zonesAt, start: m.index, open, close };
+}
+
+export function replaceZone(text, zone, rings) {
+  const { zonesAt, start, open, close } = findZone(text, zone);
+  if (start == null) return insertZone(text, zonesAt, zone, rings);
+  const lineStart = text.lastIndexOf('\n', start) + 1;
+  const indent = text.slice(lineStart, start).match(/^\s*/)[0];
   return `${text.slice(0, open)}[\n${zoneLines(rings, indent)}\n${indent}]${text.slice(close + 1)}`;
+}
+
+export function deleteConfigZone(text, zone) {
+  if (zone === 'zone1') fail('Zone 1 kann nicht gelöscht werden; sie muss immer angegeben werden.');
+  if (zone === 'zone2' && JSON.parse(text).zones?.zone3 != null) {
+    fail('Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen.');
+  }
+  const { start, close } = findZone(text, zone);
+  if (start == null) fail(`"zones.${zone}" ist nicht vorhanden.`);
+  const before = text.slice(0, start).trimEnd();
+  const out = before.endsWith(',')
+    ? before.slice(0, -1) + text.slice(close + 1)
+    : before + text.slice(close + 1).replace(/^\s*,/, '');
+  parseConfig(JSON.parse(out));
+  return out;
 }
 
 export function updateConfigZone(text, zone, rings) {

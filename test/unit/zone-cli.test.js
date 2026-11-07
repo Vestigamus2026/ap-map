@@ -74,6 +74,25 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
 }
 
 describe('npm run zone', () => {
+  it('deletes a zone without downloading anything', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone3', 'delete'], io)).toBe(0);
+    expect(calls.fetch).toEqual([]);
+    expect(calls.renamed.to).toBe('public/config.json');
+    expect(JSON.parse(calls.written.data).zones.zone3).toBeUndefined();
+    expect(JSON.parse(calls.written.data).zones.zone2).toBeDefined();
+    expect(calls.out).toEqual(['zone3 gelöscht, gespeichert in public/config.json']);
+  });
+
+  it('refuses to delete Zone 2 while Zone 3 exists', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone2', 'delete'], io)).toBe(1);
+    expect(calls.err).toEqual([
+      'Fehler: Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen. public/config.json wurde nicht geändert.',
+    ]);
+    expect(calls.writes).toEqual([]);
+  });
+
   it('replaces the settings file atomically and keeps mode, owner and group', async () => {
     const { calls, io } = env();
     expect(await main(['zone3', '62638'], io)).toBe(0);
