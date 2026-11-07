@@ -3,6 +3,9 @@
 Statische Web-App (Kroll APG 607) mit Zonen 1–3, Adresssuche, Routing (kürzeste/schnellste Route,
 Strecke außerhalb Zone 3, Ausstiegspunkte), Autobahnkilometrierung und GPS-Werkzeugen.
 
+Je nach Gerät: Auf Touch-Geräten (Handy, Tablet) ist der Knopf „Drucken“ ausgeblendet, an Geräten mit Maus/Trackpad
+die GPS-Werkzeuge (samt Schalter in den Einstellungen). `print.html` lässt sich überall direkt aufrufen.
+
 - Karte: [OpenLayers 10](https://openlayers.org/), Kacheln von `tile.openstreetmap.de`
 - Adresssuche/Rückwärtssuche: [Nominatim](https://nominatim.org/) (`nominatim.openstreetmap.org`, max. 1 Anfrage/s); bei mehreren Treffern (z. B. „Netto“ im Suchgebiet) erscheint eine Auswahlliste mit bis zu 10 Einträgen
 - Routing: [Valhalla](https://valhalla.github.io/valhalla/) (`valhalla1.openstreetmap.de`, FOSSGIS e.V.), Autobahnen erlaubt, Fähren vermieden
@@ -205,7 +208,7 @@ npm run test:e2e   # Browser-Tests (Playwright, Dienste gemockt)
 
 ## Druckansicht `print.html`
 
-Über „Drucken“ auf der Kartenseite öffnet sich `print.html` in einem neuen Tab. Die Seite liest dieselbe
+Über „Drucken“ auf der Kartenseite (nur an Geräten mit Maus/Trackpad) öffnet sich `print.html` in einem neuen Tab. Die Seite liest dieselbe
 `config.json` und zeigt Kartenname, Datum, die Zonen, die Startposition, eine Legende, einen Maßstab und die Quellen.
 Nach einer erfolgreichen Suche kommen Ziel und eingezeichnete Routen dazu (localStorage-Schlüssel
 `gebietskarte_last_search`; eine fehlgeschlagene Suche entfernt sie wieder).

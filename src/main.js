@@ -61,8 +61,11 @@ function fitWhenVisible(points) {
   if (mapVisible()) map.showPoints(points);
   else pendingFit = points;
 }
+const mouseDevice = window.matchMedia('(hover: hover) and (pointer: fine)');
 function showPage() {
-  const id = PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'show_map';
+  const hash = location.hash.slice(1);
+  const available = PAGES.includes(hash) && !(hash === 'gpstools' && mouseDevice.matches);
+  const id = available ? hash : 'show_map';
   for (const p of PAGES) $(p).classList.toggle('current', p === id);
   if (id === 'show_map') {
     map.updateSize();
