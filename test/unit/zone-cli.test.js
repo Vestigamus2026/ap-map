@@ -30,7 +30,7 @@ const config = `{
 const ring = [[13.1, 52.1], [13.9, 52.1], [13.9, 52.9], [13.1, 52.9], [13.1, 52.1]];
 const overpass = { elements: [{ type: 'relation', id: 62638, tags: { name: 'Halle (Saale)' }, members: [{ type: 'way', role: 'outer', geometry: ring.map(([lon, lat]) => ({ lon, lat })) }] }] };
 
-function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, writeError = null } = {}) {
+function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, writeError = null, links = {} } = {}) {
   const calls = { fetch: [], written: null, out: [], err: [] };
   const files = {};
   return {
@@ -57,6 +57,11 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
       rm: async (path) => {
         calls.removed = path;
       },
+      realpath: async (path) => links[path] || path,
+      stat: async () => ({ mode: 0o100664 }),
+      chmod: async (path, mode) => {
+        calls.chmod = { path, mode };
+      },
       log: (m) => calls.out.push(m),
       error: (m) => calls.err.push(m),
     },
@@ -69,6 +74,19 @@ describe('npm run zone', () => {
     expect(await main(['zone3', '62638'], io)).toBe(0);
     expect(calls.tmp).toMatch(/^public\/config\.json\.\d+\.tmp$/);
     expect(calls.renamed).toEqual({ from: calls.tmp, to: 'public/config.json' });
+  });
+
+  it('keeps the permissions of the settings file', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone3', '62638'], io)).toBe(0);
+    expect(calls.chmod).toEqual({ path: calls.tmp, mode: 0o664 });
+  });
+
+  it('writes into the target of a symbolic link', async () => {
+    const { calls, io } = env({ links: { 'dist/config.json': '/srv/ap-map/config.json' } });
+    expect(await main(['zone3', '62638', '--datei', 'dist/config.json'], io)).toBe(0);
+    expect(calls.tmp).toMatch(/^\/srv\/ap-map\/config\.json\.\d+\.tmp$/);
+    expect(calls.renamed.to).toBe('/srv/ap-map/config.json');
   });
 
   it('leaves the settings file untouched when writing fails', async () => {

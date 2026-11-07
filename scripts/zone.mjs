@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, rm } from 'node:fs/promises';
+import { readFile, writeFile, rename, rm, realpath, stat, chmod } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone } from '../src/lib/relation.js';
 
@@ -52,10 +52,14 @@ export async function main(argv, io) {
     const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
     const text = await io.readFile(args.file, 'utf8');
     const out = updateConfigZone(text, args.zone, zone.rings);
-    const tmp = `${args.file}.${process.pid}.tmp`;
+    // Über das Ziel eines Links schreiben und dessen Rechte behalten; rename ersetzt die Datei atomar.
+    const target = await io.realpath(args.file);
+    const { mode } = await io.stat(target);
+    const tmp = `${target}.${process.pid}.tmp`;
     try {
       await io.writeFile(tmp, out);
-      await io.rename(tmp, args.file);
+      await io.chmod(tmp, mode & 0o7777);
+      await io.rename(tmp, target);
     } catch (err) {
       await io.rm(tmp, { force: true }).catch(() => {});
       throw err;
@@ -82,6 +86,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     writeFile,
     rename,
     rm,
+    realpath,
+    stat,
+    chmod,
     log: console.log,
     error: console.error,
   });
