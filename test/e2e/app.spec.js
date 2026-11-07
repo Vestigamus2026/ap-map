@@ -276,6 +276,17 @@ test.describe('Einstellungsdatei config.json', () => {
     await expect(page.locator('#show_map .ol-attribution ul')).toContainText(credit);
   });
 
+  test('shows zone sources as plain text, not as HTML', async ({ page }) => {
+    await mockServices(page);
+    const evil = '<img src=x onerror="window.injected=1">';
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, zoneSources: { zone1: evil, zone2: evil, zone3: evil } } }));
+    await page.goto('/#show_map');
+    const attribution = page.locator('#show_map .ol-attribution ul');
+    await expect(attribution).toContainText(`Zonendaten: ${evil}`);
+    await expect(attribution.locator('img[src="x"]')).toHaveCount(0);
+    expect(await page.evaluate(() => window.injected)).toBeUndefined();
+  });
+
   test('uses map name, home position, zones and colours from the file', async ({ page }) => {
     const calls = await mockServices(page);
     await page.route('**/config.json', (route) => route.fulfill({ json: custom }));

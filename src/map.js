@@ -20,6 +20,8 @@ const icon = (src, anchor, anchorXUnits, zIndex) =>
   new Style({ image: new Icon({ src, anchor, anchorXUnits, anchorYUnits: 'fraction' }), zIndex });
 const line = (color, width, zIndex) => new Style({ stroke: new Stroke({ color, width }), zIndex });
 
+const escapeHtml = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 function vectorLayer(style, attributions) {
   const source = new VectorSource({ attributions });
   return { source, layer: new VectorLayer({ source, style }) };
@@ -61,7 +63,7 @@ export function createMap(target, { zones: zoneRings, start, colors, widths, pri
     shortest: vectorLayer(line(colors.shortestRoute, widths.shortestRoute, 101)),
     fastest: vectorLayer(line(colors.fastestRoute, widths.fastestRoute, 100)),
   };
-  const destination = vectorLayer(icon('img/finish_flag.png', [0.333, 0.95], 'fraction', 1000), zoneCredit);
+  const destination = vectorLayer(icon('img/finish_flag.png', [0.333, 0.95], 'fraction', 1000), escapeHtml(zoneCredit));
   const startMarker = vectorLayer(icon('img/marker_start.png', [8, 1], 'pixels', 100));
   const gpsMarker = vectorLayer(icon('img/marker_pos.png', [14, 1], 'pixels', 100));
 
