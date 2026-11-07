@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, rm, realpath, stat, chmod } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone } from '../src/lib/relation.js';
 
@@ -52,18 +52,22 @@ export async function main(argv, io) {
     const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
     const text = await io.readFile(args.file, 'utf8');
     const out = updateConfigZone(text, args.zone, zone.rings);
-    // Über das Ziel eines Links schreiben und dessen Rechte behalten; rename ersetzt die Datei atomar.
-    const target = await io.realpath(args.file);
-    const { mode } = await io.stat(target);
-    const tmp = `${target}.${process.pid}.tmp`;
+    // Erst eine Sicherung, dann dieselbe Datei überschreiben: Besitzer, Gruppe, Rechte und Links bleiben erhalten.
+    const bak = `${args.file}.bak`;
+    await io.writeFile(bak, text);
     try {
-      await io.writeFile(tmp, out);
-      await io.chmod(tmp, mode & 0o7777);
-      await io.rename(tmp, target);
+      await io.writeFile(args.file, out);
     } catch (err) {
-      await io.rm(tmp, { force: true }).catch(() => {});
+      try {
+        await io.writeFile(args.file, text);
+      } catch {
+        io.error(`Fehler: ${err.message} Die bisherige Fassung liegt in ${bak}.`);
+        return 1;
+      }
+      await io.rm(bak, { force: true }).catch(() => {});
       throw err;
     }
+    await io.rm(bak, { force: true }).catch(() => {});
     io.log(
       `${args.zone} ← ${zone.name} (Relation ${args.id}): ${zone.before} → ${zone.after} Punkte ` +
         `(Toleranz ${args.tolerance} m), gespeichert in ${args.file}`,
@@ -84,11 +88,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     fetch,
     readFile,
     writeFile,
-    rename,
     rm,
-    realpath,
-    stat,
-    chmod,
     log: console.log,
     error: console.error,
   });
