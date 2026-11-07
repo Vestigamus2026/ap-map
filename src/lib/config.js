@@ -1,4 +1,4 @@
-import { pointInPolygon } from './geo.js';
+import { regionInside } from './region.js';
 
 export const CONFIG_URL = 'config.json';
 
@@ -87,49 +87,9 @@ function parseRing(points, name) {
   return ring;
 }
 
-const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-
-function onSegment(p, a, b) {
-  if (Math.abs(cross(a, b, p)) > 1e-12) return false;
-  return Math.min(a[0], b[0]) - 1e-12 <= p[0] && p[0] <= Math.max(a[0], b[0]) + 1e-12
-    && Math.min(a[1], b[1]) - 1e-12 <= p[1] && p[1] <= Math.max(a[1], b[1]) + 1e-12;
-}
-
-function insideOrOn(ring, p) {
-  for (let i = 1; i < ring.length; i++) if (onSegment(p, ring[i - 1], ring[i])) return true;
-  return pointInPolygon(ring, p);
-}
-
-// Parameters t in (0, 1) where segment a-b touches or crosses segment c-d.
-function cutsOnSegment(a, b, c, d) {
-  const r = [b[0] - a[0], b[1] - a[1]];
-  const s = [d[0] - c[0], d[1] - c[1]];
-  const q = [c[0] - a[0], c[1] - a[1]];
-  const denom = r[0] * s[1] - r[1] * s[0];
-  if (Math.abs(denom) < 1e-15) {
-    if (Math.abs(q[0] * r[1] - q[1] * r[0]) > 1e-15) return [];
-    const rr = r[0] * r[0] + r[1] * r[1];
-    return [c, d].map((p) => ((p[0] - a[0]) * r[0] + (p[1] - a[1]) * r[1]) / rr).filter((t) => t > 0 && t < 1);
-  }
-  const t = (q[0] * s[1] - q[1] * s[0]) / denom;
-  const u = (q[0] * r[1] - q[1] * r[0]) / denom;
-  return t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9 ? [t] : [];
-}
-
-function ringInside(inner, outer) {
-  if (!inner.every((p) => insideOrOn(outer, p))) return false;
-  for (let i = 1; i < inner.length; i++) {
-    const [a, b] = [inner[i - 1], inner[i]];
-    const ts = [0, 1];
-    for (let j = 1; j < outer.length; j++) ts.push(...cutsOnSegment(a, b, outer[j - 1], outer[j]));
-    ts.sort((x, y) => x - y);
-    for (let k = 1; k < ts.length; k++) {
-      if (ts[k] - ts[k - 1] < 1e-9) continue;
-      const m = (ts[k] + ts[k - 1]) / 2;
-      if (!insideOrOn(outer, [a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m])) return false;
-    }
-  }
-  return true;
+function parseZone(value, name) {
+  if (!Array.isArray(value) || !Array.isArray(value[0]?.[0])) return [parseRing(value, name)];
+  return value.map((r, i) => parseRing(r, `${name}[${i}]`));
 }
 
 export function parseConfig(raw) {
@@ -144,9 +104,13 @@ export function parseConfig(raw) {
   }
   const rawZones = isObject(raw.zones) ? raw.zones : {};
   const zones = {};
-  for (const z of ZONES) zones[z] = parseRing(rawZones[z], `zones.${z}`);
-  if (!ringInside(zones.zone1, zones.zone2)) fail('Zone 1 muss vollständig in Zone 2 liegen.');
-  if (!ringInside(zones.zone2, zones.zone3)) fail('Zone 2 muss vollständig in Zone 3 liegen.');
+  if (rawZones.zone1 == null) fail('"zones.zone1" fehlt; Zone 1 muss immer angegeben werden.');
+  for (const z of ZONES) if (rawZones[z] != null) zones[z] = parseZone(rawZones[z], `zones.${z}`);
+  const present = ZONES.filter((z) => zones[z]);
+  for (let i = 1; i < present.length; i++) {
+    const [inner, outer] = [present[i - 1], present[i]];
+    if (!regionInside(zones[inner], zones[outer])) fail(`Zone ${inner.slice(4)} muss vollständig in Zone ${outer.slice(4)} liegen.`);
+  }
   return {
     mapName: raw.mapName.trim(),
     home: [raw.home[0], raw.home[1]],

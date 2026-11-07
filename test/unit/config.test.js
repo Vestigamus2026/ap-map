@@ -29,7 +29,7 @@ describe('parseConfig', () => {
     expect(c.preferredExtent).toBeNull();
     expect(c.colors).toEqual(DEFAULT_COLORS);
     expect(c.widths).toEqual(DEFAULT_WIDTHS);
-    expect(c.zones.zone1).toEqual(minimal().zones.zone1);
+    expect(c.zones.zone1).toEqual([minimal().zones.zone1]);
   });
 
   it('keeps the original colours and widths as defaults', () => {
@@ -58,7 +58,7 @@ describe('parseConfig', () => {
   it('closes zone rings that are not closed', () => {
     const open = ring(13.3, 52.4, 13.4, 52.5).slice(0, -1);
     const c = parseConfig({ ...minimal(), zones: { ...minimal().zones, zone1: open } });
-    expect(c.zones.zone1).toEqual(ring(13.3, 52.4, 13.4, 52.5));
+    expect(c.zones.zone1).toEqual([ring(13.3, 52.4, 13.4, 52.5)]);
   });
 
   it('reports errors in German', () => {
@@ -68,7 +68,7 @@ describe('parseConfig', () => {
     expect(errorOf({ ...minimal(), home: undefined })).toBe('"home" muss [Länge, Breite] sein.');
     expect(errorOf({ ...minimal(), preferredExtent: [[52.9, 12.4]] })).toBe('"preferredExtent" muss [[Breite, Länge], [Breite, Länge]] sein.');
     expect(errorOf({ ...minimal(), zones: { ...minimal().zones, zone3: [[13, 52], [14, 52]] } })).toBe('"zones.zone3" braucht mindestens 3 Punkte [Länge, Breite].');
-    expect(errorOf({ ...minimal(), zones: { zone1: minimal().zones.zone1 } })).toBe('"zones.zone2" braucht mindestens 3 Punkte [Länge, Breite].');
+    expect(errorOf({ ...minimal(), zones: { zone2: minimal().zones.zone2 } })).toBe('"zones.zone1" fehlt; Zone 1 muss immer angegeben werden.');
     expect(errorOf({ ...minimal(), colors: { zone1: { fill: 5 } } })).toBe('"colors.zone1.fill" muss ein Farbwert sein.');
     expect(errorOf({ ...minimal(), colors: { shortestRoute: '' } })).toBe('"colors.shortestRoute" muss ein Farbwert sein.');
     expect(errorOf({ ...minimal(), widths: { zone3: 0 } })).toBe('"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.');
@@ -107,7 +107,7 @@ describe('public/config.json', () => {
     expect(c.preferredExtent).toEqual([[52.9, 12.4], [51.9, 14.2]]);
     expect(c.colors).toEqual(DEFAULT_COLORS);
     expect(c.widths).toEqual({ ...DEFAULT_WIDTHS, shortestRoute: 4, fastestRoute: 4 });
-    expect([c.zones.zone1.length, c.zones.zone2.length, c.zones.zone3.length]).toEqual([27, 12, 11]);
+    expect([c.zones.zone1[0].length, c.zones.zone2[0].length, c.zones.zone3[0].length]).toEqual([27, 12, 11]);
   });
 });
 
@@ -134,7 +134,7 @@ describe('parseConfig review fixes', () => {
   it('allows inner zones that touch the outer border', () => {
     const z = minimal().zones;
     const zones = { ...z, zone2: ring(13.0, 52.3, 13.5, 52.6), zone1: ring(13.0, 52.4, 13.4, 52.5) };
-    expect(parseConfig({ ...minimal(), zones }).zones.zone2).toEqual(ring(13.0, 52.3, 13.5, 52.6));
+    expect(parseConfig({ ...minimal(), zones }).zones.zone2).toEqual([ring(13.0, 52.3, 13.5, 52.6)]);
   });
 });
 

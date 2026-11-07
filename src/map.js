@@ -1,3 +1,4 @@
+import { exclusivePolygons } from './lib/region.js';
 import 'ol/ol.css';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -6,7 +7,7 @@ import TileLayer from 'ol/layer/Tile.js';
 import VectorLayer from 'ol/layer/Vector.js';
 import XYZ from 'ol/source/XYZ.js';
 import VectorSource from 'ol/source/Vector.js';
-import { Polygon, Point, LineString } from 'ol/geom.js';
+import { MultiPolygon, Point, LineString } from 'ol/geom.js';
 import { fromLonLat } from 'ol/proj.js';
 import { boundingExtent, containsCoordinate, extend } from 'ol/extent.js';
 import { Style, Stroke, Fill, Icon } from 'ol/style.js';
@@ -37,14 +38,17 @@ class FitZonesControl extends Control {
   }
 }
 
-export function createMap(target, { zones: { zone1, zone2, zone3 }, start, colors, widths, print = false }) {
-  const zoneGeometry = new Polygon([ring(zone3), ring(zone2)]);
+export function createMap(target, { zones: zoneRings, start, colors, widths, print = false }) {
+  const present = ['zone1', 'zone2', 'zone3'].filter((z) => zoneRings[z]);
+  const polygons = (polys) => new MultiPolygon(polys.map((p) => p.map(ring)));
+  const zoneGeometry = polygons(zoneRings[present.at(-1)].map((r) => [r]));
   const zones = vectorLayer(null, '<a href="https://www.klupea.de" target="_blank" rel="noopener">Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH</a>');
-  zones.source.addFeatures([
-    new Feature({ geometry: zoneGeometry, style: 3 }),
-    new Feature({ geometry: new Polygon([ring(zone2), ring(zone1)]), style: 2 }),
-    new Feature({ geometry: new Polygon([ring(zone1)]), style: 1 }),
-  ]);
+  zones.source.addFeatures(
+    present.map((z, i) => {
+      const area = exclusivePolygons(zoneRings[z], i ? zoneRings[present[i - 1]] : []);
+      return new Feature({ geometry: polygons(area), style: Number(z.slice(4)) });
+    }),
+  );
   const zoneStyles = {
     1: fill(colors.zone1, widths.zone1),
     2: fill(colors.zone2, widths.zone2),

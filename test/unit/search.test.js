@@ -7,9 +7,9 @@ import { DEFAULT_SETTINGS } from '../../src/lib/settings.js';
 
 const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
 const zones = createZones({
-  zone1: ring(13.3, 52.4, 13.4, 52.5),
-  zone2: ring(13.2, 52.3, 13.5, 52.6),
-  zone3: ring(13.0, 52.0, 14.0, 53.0),
+  zone1: [ring(13.3, 52.4, 13.4, 52.5)],
+  zone2: [ring(13.2, 52.3, 13.5, 52.6)],
+  zone3: [ring(13.0, 52.0, 14.0, 53.0)],
 });
 const start = [13.35, 52.45];
 const outside = [14.5, 52.5];

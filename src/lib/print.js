@@ -48,8 +48,8 @@ export function loadLastSearch(storage) {
   };
 }
 
-export function legendEntries(colors, last) {
-  const entries = ['zone1', 'zone2', 'zone3'].map((z, i) => ({ kind: 'zone', label: `Zone ${i + 1}`, ...colors[z] }));
+export function legendEntries(colors, last, zoneNames = ['zone1', 'zone2', 'zone3']) {
+  const entries = zoneNames.map((z) => ({ kind: 'zone', label: `Zone ${z.slice(4)}`, ...colors[z] }));
   entries.push({ kind: 'icon', label: 'Start', icon: 'img/marker_start.png' });
   if (!last) return entries;
   entries.push({ kind: 'icon', label: `Ziel: ${last.label}`, icon: 'img/finish_flag.png' });

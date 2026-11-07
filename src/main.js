@@ -34,6 +34,9 @@ const { mapName, home: defaultStart, preferredExtent, colors } = config;
 
 document.title = mapName;
 const zones = createZones(config.zones);
+if (zones.outer !== 3) {
+  for (const label of document.querySelectorAll('label.switch span')) label.textContent = label.textContent.replace('Zone 3', `Zone ${zones.outer}`);
+}
 const motorways = buildMotorways(motorwayData);
 const api = createGeoApi();
 const map = createMap($('map'), { zones: config.zones, start: defaultStart, colors, widths: config.widths });
