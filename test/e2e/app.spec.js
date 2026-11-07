@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { encodePolyline } from '../../src/lib/geo.js';
 import { mockServices, collectErrors, frankfurtOder } from './helpers.js';
 
+const phone = { hasTouch: true, isMobile: true, viewport: { width: 360, height: 640 } };
+
 async function openSearch(page) {
   await page.getByRole('link', { name: 'Suche/ Info' }).click();
   await expect(page.locator('#search')).toBeVisible();
@@ -118,7 +120,7 @@ test('unknown motorway kilometre is reported', async ({ page }) => {
 });
 
 test.describe('GPS tools', () => {
-  test.use({ hasTouch: true, isMobile: true, viewport: { width: 360, height: 640 }, geolocation: { latitude: 52.3471, longitude: 14.5506 }, permissions: ['geolocation'] });
+  test.use({ ...phone, geolocation: { latitude: 52.3471, longitude: 14.5506 }, permissions: ['geolocation'] });
 
   test('sets the destination from the current position', async ({ page }) => {
     await mockServices(page);
@@ -148,27 +150,31 @@ test('credits list the new services', async ({ page }) => {
   await expect(page.locator('#show_map .ol-attribution ul')).toContainText('Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH');
 });
 
-test('a cancelled GPS lookup does not set the destination later', async ({ page }) => {
-  await mockServices(page);
-  await page.addInitScript(() => {
-    localStorage.setItem('gebietskarte_settings', 'show_gps,true');
-    const pending = [];
-    window.__resolveGps = () => pending.splice(0).forEach((ok) => ok({ coords: { latitude: 52.3471, longitude: 14.5506 } }));
-    Object.defineProperty(navigator, 'geolocation', {
-      value: { getCurrentPosition: (ok) => pending.push(ok), watchPosition: () => 1, clearWatch: () => {} },
+test.describe('on a touch phone', () => {
+  test.use(phone);
+
+  test('a cancelled GPS lookup does not set the destination later', async ({ page }) => {
+    await mockServices(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('gebietskarte_settings', 'show_gps,true');
+      const pending = [];
+      window.__resolveGps = () => pending.splice(0).forEach((ok) => ok({ coords: { latitude: 52.3471, longitude: 14.5506 } }));
+      Object.defineProperty(navigator, 'geolocation', {
+        value: { getCurrentPosition: (ok) => pending.push(ok), watchPosition: () => 1, clearWatch: () => {} },
+      });
     });
+    await page.goto('/#gpstools');
+    await page.click('#gps_getpos');
+    await page.click('#gps_cancel');
+    await page.evaluate(() => window.__resolveGps());
+    await expect(page.locator('#gps_getpos')).toBeVisible();
+    await expect(page.locator('#gpsinfo')).not.toContainText('Ziel-Position gesetzt');
+    await expect(page.locator('#location')).toHaveValue('');
   });
-  await page.goto('/#gpstools');
-  await page.click('#gps_getpos');
-  await page.click('#gps_cancel');
-  await page.evaluate(() => window.__resolveGps());
-  await expect(page.locator('#gps_getpos')).toBeVisible();
-  await expect(page.locator('#gpsinfo')).not.toContainText('Ziel-Position gesetzt');
-  await expect(page.locator('#location')).toHaveValue('');
 });
 
 test.describe('GPS reset', () => {
-  test.use({ geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
+  test.use({ ...phone, geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
 
   test('recalculates the routes from the default start', async ({ page }) => {
     const calls = await mockServices(page);
@@ -188,21 +194,25 @@ test.describe('GPS reset', () => {
   });
 });
 
-test('GPS errors are explained in German', async ({ page }) => {
-  await mockServices(page);
-  await page.addInitScript(() => {
-    localStorage.setItem('gebietskarte_settings', 'show_gps,true');
-    Object.defineProperty(navigator, 'geolocation', {
-      value: { getCurrentPosition: (ok, err) => err({ code: 1, message: '' }), watchPosition: () => 1, clearWatch: () => {} },
+test.describe('on a touch phone', () => {
+  test.use(phone);
+
+  test('GPS errors are explained in German', async ({ page }) => {
+    await mockServices(page);
+    await page.addInitScript(() => {
+      localStorage.setItem('gebietskarte_settings', 'show_gps,true');
+      Object.defineProperty(navigator, 'geolocation', {
+        value: { getCurrentPosition: (ok, err) => err({ code: 1, message: '' }), watchPosition: () => 1, clearWatch: () => {} },
+      });
     });
+    await page.goto('/#gpstools');
+    await page.click('#gps_getpos');
+    await expect(page.locator('#gpsinfo')).toHaveText('Position nicht verfügbar: Zugriff auf den Standort verweigert');
   });
-  await page.goto('/#gpstools');
-  await page.click('#gps_getpos');
-  await expect(page.locator('#gpsinfo')).toHaveText('Position nicht verfügbar: Zugriff auf den Standort verweigert');
 });
 
 test.describe('GPS reset while routing', () => {
-  test.use({ geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
+  test.use({ ...phone, geolocation: { latitude: 52.45, longitude: 13.3 }, permissions: ['geolocation'] });
 
   test('a pending route from the GPS start cannot overwrite the reset result', async ({ page }) => {
     await mockServices(page);

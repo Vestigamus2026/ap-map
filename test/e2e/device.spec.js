@@ -18,6 +18,13 @@ test.describe('phone (touch)', () => {
     await page.goto('/#settings');
     await expect(page.getByText('Zeige GPS-Werkzeuge?')).toBeVisible();
   });
+
+  test('opening #gpstools directly shows the GPS tools', async ({ page }) => {
+    await mockServices(page);
+    await page.addInitScript(gpsOn);
+    await page.goto('/#gpstools');
+    await expect(page.locator('#gpstools')).toBeVisible();
+  });
 });
 
 test.describe('desktop (mouse)', () => {
@@ -33,5 +40,13 @@ test.describe('desktop (mouse)', () => {
     await expect(page.locator('#settings .toolbar.gpson')).toBeHidden();
     await expect(page.locator('#settings .toolbar.gpsoff')).toBeVisible();
     await expect(page.getByText('Zeige GPS-Werkzeuge?')).toBeHidden();
+  });
+
+  test('opening #gpstools directly shows the map instead', async ({ page }) => {
+    await mockServices(page);
+    await page.addInitScript(gpsOn);
+    await page.goto('/#gpstools');
+    await expect(page.locator('#show_map')).toBeVisible();
+    await expect(page.locator('#gpstools')).toBeHidden();
   });
 });
