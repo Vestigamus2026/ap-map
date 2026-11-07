@@ -191,3 +191,26 @@ describe('route (Valhalla)', () => {
     await expect(api.route([13, 52], [0, 0])).rejects.toThrow('No path could be found for input');
   });
 });
+
+describe('geocodeAll (several hits)', () => {
+  const netto = (lon, road) => ({ lat: '51.48', lon, name: 'Netto', addresstype: 'shop', address: { road, house_number: '1', postcode: '06112', city: 'Halle (Saale)', country_code: 'de' } });
+
+  it('asks for up to 10 hits and returns all except whole countries', async () => {
+    const country = { lat: '51', lon: '10', addresstype: 'country', address: { country_code: 'de' } };
+    const fetch = fakeFetch(() => jsonResponse([netto('11.9', 'Böllberger Weg'), netto('12.0', 'Industriestraße'), country]));
+    const all = await make(fetch).geocodeAll('Netto', { extent: [[51.55, 11.85], [51.4, 12.1]] });
+    expect(fetch.calls[0].url.searchParams.get('limit')).toBe('10');
+    expect(fetch.calls[0].url.searchParams.get('viewbox')).toBe('11.85,51.55,12.1,51.4');
+    expect(all.map((l) => [l.name, l.street, l.point])).toEqual([
+      ['Netto', 'Böllberger Weg 1', [11.9, 51.48]],
+      ['Netto', 'Industriestraße 1', [12, 51.48]],
+    ]);
+  });
+
+  it('returns the point itself for coordinates', async () => {
+    const fetch = fakeFetch(() => jsonResponse([]));
+    const all = await make(fetch).geocodeAll('51.48 11.97');
+    expect(all.map((l) => l.point)).toEqual([[11.97, 51.48]]);
+    expect(fetch.calls).toHaveLength(0);
+  });
+});

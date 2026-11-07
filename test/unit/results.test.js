@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildResultEntries, entryText } from '../../src/lib/results.js';
+import { formatCoordinates } from '../../src/lib/format.js';
 import { DEFAULT_SETTINGS } from '../../src/lib/settings.js';
 
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
@@ -85,5 +86,37 @@ describe('buildResultEntries', () => {
   it('mentions a detected motorway kilometre', () => {
     const e = buildResultEntries({ ...full, motorway: { section: { key: 'A3_up', bab: 3 }, km: 12.34 } }, settings());
     expect(e.map(entryText)).toContain('Punkt auf der Autobahn A3 bei km 12.3! Kilometer und Autobahn eingetragen.');
+  });
+});
+
+describe('several hits', () => {
+  it('lists the hits to choose from', () => {
+    const hits = [
+      { name: 'Netto', street: 'Böllberger Weg 168', postalCode: '06128', city: 'Halle (Saale)', point: [11.95, 51.46] },
+      { street: 'Industriestraße 116', city: 'Halle (Saale)', point: [11.97, 51.43] },
+      { name: 'Halle (Saale)', city: 'Halle (Saale)', point: [11.97, 51.48] },
+    ];
+    const e = buildResultEntries({ ok: false, message: 'Mehrere Treffer, bitte auswählen:', choices: hits }, DEFAULT_SETTINGS);
+    expect(e.map(entryText)).toEqual([
+      'Mehrere Treffer, bitte auswählen:',
+      'Netto, Böllberger Weg 168, 06128 Halle (Saale)',
+      'Industriestraße 116, Halle (Saale)',
+      'Halle (Saale)',
+    ]);
+    expect(e[1].choice).toBe(hits[0]);
+  });
+});
+
+describe('several hits with the same address', () => {
+  it('adds the coordinates so the hits can be told apart', () => {
+    const a = { name: 'Netto', street: 'Lutherplatz', city: 'Halle (Saale)', point: [11.96, 51.47] };
+    const b = { ...a, point: [11.97, 51.48] };
+    const c = { street: 'Markt 1', city: 'Halle (Saale)', point: [11.97, 51.48] };
+    const e = buildResultEntries({ ok: false, message: 'Mehrere Treffer, bitte auswählen:', choices: [a, b, c] }, DEFAULT_SETTINGS);
+    expect(e.slice(1).map(entryText)).toEqual([
+      `Netto, Lutherplatz, Halle (Saale) ${formatCoordinates(a.point)}`,
+      `Netto, Lutherplatz, Halle (Saale) ${formatCoordinates(b.point)}`,
+      'Markt 1, Halle (Saale)',
+    ]);
   });
 });

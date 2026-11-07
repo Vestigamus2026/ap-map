@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { parseConfig } from '../../src/lib/config.js';
 
 const sq = (a, b) => [[a, a], [b, a], [b, b], [a, b], [a, a]];
@@ -21,5 +22,13 @@ describe('printColors in config.json', () => {
   it('rejects wrong print colours with German messages', () => {
     expect(() => parseConfig({ ...base, printColors: 'red' })).toThrow('"printColors" muss ein Objekt sein.');
     expect(() => parseConfig({ ...base, printColors: { zone2: { border: 'reed' } } })).toThrow('"printColors.zone2.border" muss ein Farbwert sein.');
+  });
+});
+
+describe('example config', () => {
+  it('shows printColors so they can be edited', () => {
+    const raw = JSON.parse(readFileSync('public/config.json', 'utf8'));
+    expect(Object.keys(raw.printColors)).toEqual(['zone1', 'zone2', 'zone3', 'shortestRoute', 'fastestRoute']);
+    expect(() => parseConfig(raw)).not.toThrow();
   });
 });

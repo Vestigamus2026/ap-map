@@ -357,3 +357,26 @@ test('GPS page and settings use German labels', async ({ page }) => {
   await expect(page.locator('#settings')).toContainText('Zeige GPS-Werkzeuge?');
   await expect(page.locator('body')).not.toContainText(/Tools?\b|Tracking|Operation|Kredits/);
 });
+
+test('several hits for an address can be chosen from a list', async ({ page }) => {
+  const netto = (lon, road) => ({ lat: '52.45', lon, name: 'Netto', addresstype: 'shop', address: { road, house_number: '1', postcode: '12345', city: 'Berlin', country_code: 'de' } });
+  const calls = await mockServices(page, { places: [netto('13.36', 'Erste Straße'), netto('14.55', 'Zweite Straße')] });
+  await page.goto('/');
+  await openSearch(page);
+  await page.fill('#location', 'Netto');
+  await page.click('#submitplace');
+  const result = page.locator('#result');
+  await expect(result).toContainText('Mehrere Treffer, bitte auswählen:');
+  const choices = result.getByRole('button');
+  await expect(choices).toHaveText(['Netto, Erste Straße 1, 12345 Berlin (DE)', 'Netto, Zweite Straße 1, 12345 Berlin (DE)']);
+  expect(calls.valhalla).toHaveLength(0);
+
+  await choices.nth(1).click();
+  await expect(result).toContainText('Diese Position befindet sich außerhalb aller Zonen.');
+  await expect(result).toContainText('Kürzeste Verbindung:');
+  await expect(result).not.toContainText('Mehrere Treffer');
+  await expect(page.locator('#location')).toHaveValue('Netto, Zweite Straße 1, 12345 Berlin (DE)');
+  expect(calls.valhalla.length).toBeGreaterThan(0);
+  expect(calls.valhalla.some((r) => r.locations[1].lon === 14.55)).toBe(true);
+  expect(calls.nominatim.filter((u) => u.pathname.startsWith('/search'))).toHaveLength(1);
+});

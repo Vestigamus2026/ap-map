@@ -4,7 +4,7 @@ Statische Web-App (Kroll APG 607) mit Zonen 1–3, Adresssuche, Routing (kürzes
 Strecke außerhalb Zone 3, Ausstiegspunkte), Autobahnkilometrierung und GPS-Werkzeugen.
 
 - Karte: [OpenLayers 10](https://openlayers.org/), Kacheln von `tile.openstreetmap.de`
-- Adresssuche/Rückwärtssuche: [Nominatim](https://nominatim.org/) (`nominatim.openstreetmap.org`, max. 1 Anfrage/s)
+- Adresssuche/Rückwärtssuche: [Nominatim](https://nominatim.org/) (`nominatim.openstreetmap.org`, max. 1 Anfrage/s); bei mehreren Treffern (z. B. „Netto“ im Suchgebiet) erscheint eine Auswahlliste mit bis zu 10 Einträgen
 - Routing: [Valhalla](https://valhalla.github.io/valhalla/) (`valhalla1.openstreetmap.de`, FOSSGIS e.V.), Autobahnen erlaubt, Fähren vermieden
 - Kein API-Schlüssel nötig. Die Dienst-URLs stehen in `src/lib/geoapi.js` (`DEFAULT_NOMINATIM_URL`, `DEFAULT_VALHALLA_URL`).
 
