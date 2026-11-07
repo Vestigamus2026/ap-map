@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone, deleteConfigZone } from '../src/lib/relation.js';
 
 const USAGE =
-  'Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL> [--toleranz Meter] [--datei public/config.json] [--server Overpass-URL]\n' +
+  'Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL> [weitere IDs …] [--toleranz Meter] [--datei public/config.json] [--server Overpass-URL]\n' +
   '   oder: npm run zone -- <zone2|zone3> delete [--datei public/config.json]';
 const FLAGS = { '--toleranz': 'tolerance', '--datei': 'file', '--server': 'server' };
 
@@ -16,12 +16,12 @@ function parseArgs(argv) {
     else if (i + 1 < argv.length) opts[FLAGS[argv[i]]] = argv[++i];
     else return null;
   }
-  if (pos.length !== 2 || !/^zone[123]$/.test(pos[0])) return null;
-  if (pos[1] === 'delete') return { ...opts, zone: pos[0], delete: true };
-  const id = pos[1].match(/^(?:https?:\/\/(?:www\.)?openstreetmap\.org\/relation\/)?([1-9]\d*)\/?$/)?.[1];
+  if (pos.length < 2 || !/^zone[123]$/.test(pos[0])) return null;
+  if (pos[1] === 'delete') return pos.length === 2 ? { ...opts, zone: pos[0], delete: true } : null;
+  const ids = pos.slice(1).map((a) => a.match(/^(?:https?:\/\/(?:www\.)?openstreetmap\.org\/relation\/)?([1-9]\d*)\/?$/)?.[1]);
   const tolerance = Number(opts.tolerance);
-  if (!id || opts.tolerance === '' || !Number.isFinite(tolerance) || tolerance < 0) return null;
-  return { ...opts, zone: pos[0], id, tolerance };
+  if (ids.some((id) => !id) || opts.tolerance === '' || !Number.isFinite(tolerance) || tolerance < 0) return null;
+  return { ...opts, zone: pos[0], ids: [...new Set(ids)], tolerance };
 }
 
 export async function main(argv, io) {
@@ -48,7 +48,7 @@ export async function main(argv, io) {
         'User-Agent': 'ap-map zone import (https://github.com/Vestigamus2026/ap-map)',
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ data: overpassQuery(args.id) }).toString(),
+      body: new URLSearchParams({ data: overpassQuery(args.ids) }).toString(),
     });
   } catch (err) {
     io.error(
@@ -62,14 +62,19 @@ export async function main(argv, io) {
     return 1;
   }
   try {
-    const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
+    const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance, ids: args.ids });
+    const relations =
+      zone.relations.length === 1
+        ? `Relation ${zone.relations[0].id}`
+        : `Relationen ${zone.relations.map((r) => r.id).join(', ')}`;
     const text = await io.readFile(args.file, 'utf8');
     const today = (io.today ?? (() => new Date().toISOString().slice(0, 10)))();
-    const source = `© OpenStreetMap-Mitwirkende (ODbL), Relation ${args.id} ${zone.name}, Stand ${today}`;
+    const named = zone.relations.map((r) => `${r.id} ${r.name}`).join(', ');
+    const source = `© OpenStreetMap-Mitwirkende (ODbL), ${zone.relations.length === 1 ? 'Relation' : 'Relationen'} ${named}, Stand ${today}`;
     const out = updateConfigZone(text, args.zone, zone.rings, source);
     await save(io, args.file, out);
     io.log(
-      `${args.zone} ← ${zone.name} (Relation ${args.id}): ${zone.before} → ${zone.after} Punkte ` +
+      `${args.zone} ← ${zone.name} (${relations}): ${zone.before} → ${zone.after} Punkte ` +
         `(Toleranz ${args.tolerance} m), gespeichert in ${args.file}`,
     );
     if (zone.rings.length > 1) {
