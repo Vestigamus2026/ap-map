@@ -44,7 +44,8 @@ function edgePiecesOk(rings, other, ok) {
       for (let k = 1; k < ts.length; k++) {
         if (ts[k] - ts[k - 1] < 1e-9) continue;
         const m = (ts[k] + ts[k - 1]) / 2;
-        if (!ok([a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m])) return false;
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]) * (ts[k] - ts[k - 1]);
+        if (!ok([a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m], [b[0] - a[0], b[1] - a[1]], len)) return false;
       }
     }
   }
@@ -52,10 +53,21 @@ function edgePiecesOk(rings, other, ok) {
 }
 
 export function regionInside(inner, outer) {
+  // Jede Teilfläche grenzt an ein Kantenstück; Proben dicht neben beiden Seiten finden auch Flächen,
+  // deren Ränder vollständig auf Rändern der anderen Zone liegen (z. B. eine Zone gleich einem Loch).
+  const sidesOk = (m, dir, len) => {
+    const d = Math.min(1e-9, len / 10) / Math.hypot(dir[0], dir[1]);
+    return [1, -1].every((s) => {
+      const p = [m[0] - dir[1] * d * s, m[1] + dir[0] * d * s];
+      return !inRegion(inner, p) || inRegion(outer, p);
+    });
+  };
   return (
     inner.every((r) => r.every((p) => insideOrOn(outer, p))) &&
     edgePiecesOk(inner, outer, (p) => insideOrOn(outer, p)) &&
-    edgePiecesOk(outer, inner, (p) => !strictlyInside(inner, p))
+    edgePiecesOk(outer, inner, (p) => !strictlyInside(inner, p)) &&
+    edgePiecesOk(inner, outer, sidesOk) &&
+    edgePiecesOk(outer, inner, sidesOk)
   );
 }
 
@@ -63,25 +75,29 @@ export function closestOnRegion(rings, pt) {
   return rings.map((r) => closestPointOnLine(r, pt)).reduce((best, c) => (c.distanceKm < best.distanceKm ? c : best));
 }
 
-const ringKey = (r) => r.slice(0, -1).map(String).sort().join(';');
+function offRing(ring, other) {
+  const mids = ring.slice(1).map((p, i) => [(p[0] + ring[i][0]) / 2, (p[1] + ring[i][1]) / 2]);
+  return [...ring, ...mids].find((p) => !onRing(other, p));
+}
+
+const sameOutline = (a, b) => !offRing(a, b) && !offRing(b, a);
 
 function contains(outer, ring) {
-  const mids = ring.slice(1).map((p, i) => [(p[0] + ring[i][0]) / 2, (p[1] + ring[i][1]) / 2]);
-  const probe = [...ring, ...mids].find((p) => !onRing(outer, p));
+  const probe = offRing(ring, outer);
   return probe ? pointInPolygon(outer, probe) : false;
 }
 
 // Fläche von `rings` ohne die Fläche von `cut` (die vollständig darin liegt) als Polygone [Außenring, ...Löcher].
 export function exclusivePolygons(rings, cut) {
-  const counts = new Map();
-  for (const r of [...rings, ...cut]) counts.set(ringKey(r), (counts.get(ringKey(r)) || 0) + 1);
-  const seen = new Set();
-  const all = [...rings, ...cut].filter((r) => {
-    const k = ringKey(r);
-    if (counts.get(k) % 2 === 0 || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  // Gleiche Umrisse (auch mit unterschiedlich vielen Punkten auf den Kanten) heben sich paarweise auf.
+  const list = [...rings, ...cut];
+  const dropped = new Set();
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length && !dropped.has(i); j++) {
+      if (!dropped.has(j) && sameOutline(list[i], list[j])) dropped.add(i).add(j);
+    }
+  }
+  const all = list.filter((_, i) => !dropped.has(i));
   const parents = all.map((r) => all.filter((o) => o !== r && contains(o, r)));
   const depth = parents.map((p) => p.length);
   return all.flatMap((r, i) =>

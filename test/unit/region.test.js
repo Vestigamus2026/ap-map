@@ -25,6 +25,18 @@ describe('regionInside', () => {
     expect(regionInside([sq(1, 1, 2), sq(20.5, 0.5, 1)], [big, exclave])).toBe(true);
     expect(regionInside([sq(1, 1, 2), sq(1, 1, 0.5)], [big])).toBe(true);
   });
+  it('rejects an area that is exactly a hole of the outer zone', () => {
+    expect(regionInside([hole], [big, hole])).toBe(false);
+    expect(regionInside([hole, island], [big, hole])).toBe(false);
+    expect(regionInside([island], [big, hole, island])).toBe(true);
+  });
+
+  it('accepts the same outline with extra points on the edges', () => {
+    const dense = [[0, 0], [5, 0], [10, 0], [10, 5], [10, 10], [5, 10], [0, 10], [0, 5], [0, 0]];
+    expect(regionInside([big], [dense])).toBe(true);
+    expect(regionInside([dense], [big])).toBe(true);
+  });
+
   it('rejects areas that reach into a hole, cover a hole or have a part outside', () => {
     expect(regionInside([sq(3, 3, 2)], [big, hole])).toBe(false);
     expect(regionInside([sq(1, 1, 8)], [big, hole])).toBe(false);
@@ -55,5 +67,8 @@ describe('exclusivePolygons', () => {
   });
   it('drops outlines that the inner zone shares exactly', () => {
     expect(exclusivePolygons([big], [big])).toEqual([]);
+    const dense = [[0, 0], [5, 0], [10, 0], [10, 5], [10, 10], [5, 10], [0, 10], [0, 5], [0, 0]];
+    expect(exclusivePolygons([dense], [big])).toEqual([]);
+    expect(key(exclusivePolygons([dense, exclave], [big]))).toEqual(['20,0']);
   });
 });

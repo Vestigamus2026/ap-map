@@ -30,8 +30,9 @@ const config = `{
 const ring = [[13.1, 52.1], [13.9, 52.1], [13.9, 52.9], [13.1, 52.9], [13.1, 52.1]];
 const overpass = { elements: [{ type: 'relation', id: 62638, tags: { name: 'Halle (Saale)' }, members: [{ type: 'way', role: 'outer', geometry: ring.map(([lon, lat]) => ({ lon, lat })) }] }] };
 
-function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config } = {}) {
+function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, writeError = null } = {}) {
   const calls = { fetch: [], written: null, out: [], err: [] };
+  const files = {};
   return {
     calls,
     io: {
@@ -45,7 +46,16 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
         return text;
       },
       writeFile: async (path, data) => {
-        calls.written = { path, data };
+        calls.tmp = path;
+        if (writeError) throw writeError;
+        files[path] = data;
+      },
+      rename: async (from, to) => {
+        calls.renamed = { from, to };
+        calls.written = { path: to, data: files[from] };
+      },
+      rm: async (path) => {
+        calls.removed = path;
       },
       log: (m) => calls.out.push(m),
       error: (m) => calls.err.push(m),
@@ -54,6 +64,21 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
 }
 
 describe('npm run zone', () => {
+  it('writes a temporary file next to the settings file and renames it over the old one', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone3', '62638'], io)).toBe(0);
+    expect(calls.tmp).toMatch(/^public\/config\.json\.\d+\.tmp$/);
+    expect(calls.renamed).toEqual({ from: calls.tmp, to: 'public/config.json' });
+  });
+
+  it('leaves the settings file untouched when writing fails', async () => {
+    const { calls, io } = env({ writeError: new Error('ENOSPC: no space left on device') });
+    expect(await main(['zone3', '62638'], io)).toBe(1);
+    expect(calls.err.join('\n')).toContain('ENOSPC: no space left on device public/config.json wurde nicht geändert.');
+    expect(calls.renamed).toBeUndefined();
+    expect(calls.removed).toBe(calls.tmp);
+  });
+
   it('downloads the relation and writes it into the zone', async () => {
     const { calls, io } = env();
     expect(await main(['zone3', '62638'], io)).toBe(0);

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone } from '../src/lib/relation.js';
 
@@ -51,7 +51,15 @@ export async function main(argv, io) {
   try {
     const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
     const text = await io.readFile(args.file, 'utf8');
-    await io.writeFile(args.file, updateConfigZone(text, args.zone, zone.rings));
+    const out = updateConfigZone(text, args.zone, zone.rings);
+    const tmp = `${args.file}.${process.pid}.tmp`;
+    try {
+      await io.writeFile(tmp, out);
+      await io.rename(tmp, args.file);
+    } catch (err) {
+      await io.rm(tmp, { force: true }).catch(() => {});
+      throw err;
+    }
     io.log(
       `${args.zone} ← ${zone.name} (Relation ${args.id}): ${zone.before} → ${zone.after} Punkte ` +
         `(Toleranz ${args.tolerance} m), gespeichert in ${args.file}`,
@@ -72,6 +80,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     fetch,
     readFile,
     writeFile,
+    rename,
+    rm,
     log: console.log,
     error: console.error,
   });
