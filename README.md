@@ -78,7 +78,7 @@ normale Punkte in `public/config.json` geschrieben. Die Besucher der Seite laden
    Wer `config.json` auf dem Server pflegt, kopiert stattdessen nur die geänderte Datei:
    `scp public/config.json <user>@<server>:/var/www/ap-map/config.json`.
 
-Die übrigen Zonen bleiben unverändert. Bei einem Fehler wird die Datei nicht geändert.
+Die übrigen Zonen bleiben unverändert. Bei einem Fehler wird die Datei nicht geändert. Die neue Fassung wird erst vollständig neben die alte geschrieben und dann in einem Schritt ausgetauscht; Besitzer, Gruppe und Rechte bleiben erhalten. Dafür braucht der Befehl Schreibrecht im Ordner der Datei. ACLs und Hardlinks werden nicht übernommen, deshalb im Checkout (`public/config.json`) importieren und danach bauen und `dist/` kopieren, nicht direkt auf dem Server.
 
 **Ganz neues Gebiet:** Weil jede Zone in der nächsten äußeren liegen muss, scheitert der Import, solange die
 alten Zonen 2 und 3 noch woanders liegen (`Fehler: Zone 1 muss vollständig in Zone 2 liegen.`).
