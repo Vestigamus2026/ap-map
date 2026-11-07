@@ -15,7 +15,8 @@ import { defaults as defaultControls, ScaleLine, Control } from 'ol/control.js';
 import { DEFAULT_ZONE_SOURCE } from './lib/config.js';
 
 const ring = (points) => points.map((p) => fromLonLat(p));
-const fill = ({ border, fill: fillColor }, width) => new Style({ stroke: new Stroke({ color: border, width }), fill: new Fill({ color: fillColor }) });
+const fill = ({ border, fill: fillColor }, width) =>
+  new Style({ stroke: width > 0 ? new Stroke({ color: border, width }) : undefined, fill: new Fill({ color: fillColor }) });
 const icon = (src, anchor, anchorXUnits, zIndex) =>
   new Style({ image: new Icon({ src, anchor, anchorXUnits, anchorYUnits: 'fraction' }), zIndex });
 const line = (color, width, zIndex) => new Style({ stroke: new Stroke({ color, width }), zIndex });

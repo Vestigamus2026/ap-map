@@ -71,7 +71,14 @@ describe('parseConfig', () => {
     expect(errorOf({ ...minimal(), zones: { zone2: minimal().zones.zone2 } })).toBe('"zones.zone1" fehlt; Zone 1 muss immer angegeben werden.');
     expect(errorOf({ ...minimal(), colors: { zone1: { fill: 5 } } })).toBe('"colors.zone1.fill" muss ein Farbwert sein.');
     expect(errorOf({ ...minimal(), colors: { shortestRoute: '' } })).toBe('"colors.shortestRoute" muss ein Farbwert sein.');
-    expect(errorOf({ ...minimal(), widths: { zone3: 0 } })).toBe('"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.');
+    expect(errorOf({ ...minimal(), widths: { zone3: -1 } })).toBe('"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.');
+    expect(errorOf({ ...minimal(), widths: { shortestRoute: 0 } })).toBe('"widths.shortestRoute" muss eine Zahl größer als 0 und höchstens 50 sein.');
+  });
+
+  it('accepts width 0 for zone borders (no border line)', () => {
+    const c = parseConfig({ ...minimal(), widths: { zone1: 0, zone2: 0, zone3: 0 } });
+    expect(c.widths).toMatchObject({ zone1: 0, zone2: 0, zone3: 0 });
+    expect(parseConfig({ ...minimal(), printWidths: { zone1: 0 } }).printWidths.zone1).toBe(0);
   });
 
   it('requires every zone to lie completely inside the next outer zone', () => {

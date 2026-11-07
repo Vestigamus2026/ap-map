@@ -71,6 +71,32 @@ test('print page draws zone borders with printWidths', async ({ page }) => {
   expect(thick).toBeGreaterThan(thin * 3);
 });
 
+test('print page draws no zone border with printWidths 0', async ({ page }) => {
+  await mockServices(page);
+  const config = JSON.parse(await readFile('public/config.json', 'utf8'));
+  const bluePixels = async (zone1, printWidths) => {
+    await page.unroute('**/config.json');
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...config, printColors: { zone1 }, printWidths } }));
+    await page.goto('/print.html');
+    const count = () => page.locator('#printmap canvas').first().evaluate((canvas) => {
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const n = { red: 0, blue: 0 };
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 200 && data[i + 1] < 60 && data[i + 2] < 60) n.red++;
+        if (data[i + 2] > 200 && data[i] < 60 && data[i + 1] < 60) n.blue++;
+      }
+      return n;
+    });
+    await expect.poll(async () => (await count()).red).toBeGreaterThan(0);
+    return (await count()).blue;
+  };
+  const withoutBorder = await bluePixels({ fill: 'rgb(255, 0, 0)', border: 'transparent' }, { zone1: 4 });
+  const widthZero = await bluePixels({ fill: 'rgb(255, 0, 0)', border: 'rgb(0, 0, 255)' }, { zone1: 0 });
+  const widthFour = await bluePixels({ fill: 'rgb(255, 0, 0)', border: 'rgb(0, 0, 255)' }, { zone1: 4 });
+  expect(widthZero).toBe(withoutBorder);
+  expect(widthFour).toBeGreaterThan(withoutBorder);
+});
+
 test('print page reads colours written as "Farbe, Deckkraft"', async ({ page }) => {
   await mockServices(page);
   const config = JSON.parse(await readFile('public/config.json', 'utf8'));
