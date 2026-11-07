@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "zone": "node scripts/zone.mjs"
+    "zone": "node scripts/zone.mjs",
+    "home": "node scripts/home.mjs"
   },
   "dependencies": {
     "ol": "^10.11.0"

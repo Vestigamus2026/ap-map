@@ -120,6 +120,35 @@ zone3 gelöscht, gespeichert in public/config.json
 - `Relation wurde nicht gefunden.` – die ID prüfen; es muss eine Relation sein, kein Weg (`/way/…`) und kein Punkt (`/node/…`).
 - `Der Umriss der Relation ist nicht geschlossen.` – die Grenze ist in OpenStreetMap unvollständig; eine andere Relation wählen.
 
+## Startposition aus einer Adresse setzen
+
+```bash
+npm run home -- "53 Delitzscher Str., 06112 Halle"
+```
+
+Der Befehl sucht die Adresse bei Nominatim (OpenStreetMap) und schreibt sie als `home` in `public/config.json`.
+Ausgabe:
+
+```text
+home ← Delitzscher Straße 53, 06112 Halle (Saale) [11.9997142, 51.4789839], gespeichert in public/config.json
+```
+
+Mit `--umkreis` wird zusätzlich `preferredExtent` (das bevorzugte Suchgebiet der Adresssuche) auf ein Rechteck
+mit so vielen Kilometern Abstand um die neue Startposition gesetzt:
+
+```bash
+npm run home -- "53 Delitzscher Str., 06112 Halle" --umkreis 50
+```
+
+```text
+preferredExtent ← 50 km um die Startposition: [[51.9281,11.2785],[51.0298,12.7209]]
+```
+
+Statt einer Adresse gehen auch Koordinaten `"Breite, Länge"`, z. B. `npm run home -- "51.4789839, 11.9997142"`.
+Alles andere in der Datei bleibt unverändert; bei einem Fehler (z. B. `Adresse nicht gefunden`) wird sie nicht geändert.
+Wie bei `npm run zone` gehen `--datei <Datei>` (z. B. eine Datei in `archive/`) und `--server <Nominatim-URL>`.
+Danach mit `npm run dev` prüfen, bauen und `dist/` kopieren (siehe [Build und Deployment](#build-und-deployment)).
+
 ## Entwicklung
 
 Voraussetzung: Node.js 18+.
