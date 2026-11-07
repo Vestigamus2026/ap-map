@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildResultEntries, entryText } from '../../src/lib/results.js';
+import { formatCoordinates } from '../../src/lib/format.js';
 import { DEFAULT_SETTINGS } from '../../src/lib/settings.js';
 
 const settings = (over = {}) => ({ ...DEFAULT_SETTINGS, ...over });
@@ -103,5 +104,19 @@ describe('several hits', () => {
       'Halle (Saale)',
     ]);
     expect(e[1].choice).toBe(hits[0]);
+  });
+});
+
+describe('several hits with the same address', () => {
+  it('adds the coordinates so the hits can be told apart', () => {
+    const a = { name: 'Netto', street: 'Lutherplatz', city: 'Halle (Saale)', point: [11.96, 51.47] };
+    const b = { ...a, point: [11.97, 51.48] };
+    const c = { street: 'Markt 1', city: 'Halle (Saale)', point: [11.97, 51.48] };
+    const e = buildResultEntries({ ok: false, message: 'Mehrere Treffer, bitte auswählen:', choices: [a, b, c] }, DEFAULT_SETTINGS);
+    expect(e.slice(1).map(entryText)).toEqual([
+      `Netto, Lutherplatz, Halle (Saale) ${formatCoordinates(a.point)}`,
+      `Netto, Lutherplatz, Halle (Saale) ${formatCoordinates(b.point)}`,
+      'Markt 1, Halle (Saale)',
+    ]);
   });
 });

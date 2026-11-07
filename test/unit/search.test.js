@@ -185,6 +185,13 @@ describe('several hits', () => {
     expect(api.route).not.toHaveBeenCalled();
   });
 
+  it('keeps different places with the same address as separate hits', async () => {
+    const hits = [netto([13.36, 52.45], 'Lutherplatz'), netto([13.37, 52.46], 'Lutherplatz')];
+    const api = fakeApi({ geocodeAll: vi.fn(async () => hits) });
+    const r = await runSearch({ query: 'Netto', start, settings: DEFAULT_SETTINGS, api, zones });
+    expect(r.choices).toEqual(hits);
+  });
+
   it('uses the hit directly when all hits are the same place', async () => {
     const api = fakeApi({ geocodeAll: vi.fn(async () => [netto(inZone2, 'Lutherplatz'), netto(inZone2, 'Lutherplatz')]) });
     const r = await runSearch({ query: 'Netto', start, settings: DEFAULT_SETTINGS, api, zones });

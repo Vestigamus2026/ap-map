@@ -45,7 +45,12 @@ function routeEntry(title, color, route, settings, outer) {
 
 export function buildResultEntries(result, settings, colors = { shortestRoute: SHORTEST_COLOR, fastestRoute: FASTEST_COLOR }) {
   if (!result.ok) {
-    return [{ text: result.message }, ...(result.choices || []).map((location) => ({ text: choiceLabel(location), choice: location }))];
+    const labels = (result.choices || []).map(choiceLabel);
+    const choices = (result.choices || []).map((location, i) => ({
+      text: labels.indexOf(labels[i]) === labels.lastIndexOf(labels[i]) ? labels[i] : `${labels[i]} ${formatCoordinates(location.point)}`,
+      choice: location,
+    }));
+    return [{ text: result.message }, ...choices];
   }
   const coords = (p) => (settings.show_coordinaten && p ? formatCoordinates(p) : undefined);
   const entries = [];
