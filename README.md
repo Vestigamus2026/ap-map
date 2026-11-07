@@ -47,8 +47,10 @@ Parameter `config` in der Adresse:
 - Erlaubt sind nur Buchstaben, Ziffern, `-` und `_`; andere Namen zeigen eine Fehlermeldung.
 - Der Knopf „Drucken“ übernimmt den Parameter, die Druckansicht zeigt also dieselbe Karte.
 - Die letzte Suche für die Druckansicht wird je Einstellungsdatei getrennt gespeichert.
-- Eine archivierte Datei bereitstellen: `cp archive/config-kroll.json public/config-kroll.json`,
-  danach `npm run build` und deployen; aufrufen mit `?config=kroll`.
+- Neue Datei anlegen: `npm run create config adac` legt `public/config-adac.json` als Kopie von
+  `public/config.json` an. Eine andere Vorlage, z. B. aus dem Archiv:
+  `npm run create -- config kroll --von archive/config-kroll.json`. Eine vorhandene Datei wird nie überschrieben.
+- `npm run build` übernimmt alle `public/config-*.json` nach `dist/`; nach dem Deploy aufrufen mit `?config=adac`.
 - `npm run zone` und `npm run home` ändern eine andere Datei mit `--datei`, z. B.
   `npm run zone -- zone1 62638 --datei public/config-adac.json`.
 
