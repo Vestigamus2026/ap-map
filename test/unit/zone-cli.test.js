@@ -30,7 +30,7 @@ const config = `{
 const ring = [[13.1, 52.1], [13.9, 52.1], [13.9, 52.9], [13.1, 52.9], [13.1, 52.1]];
 const overpass = { elements: [{ type: 'relation', id: 62638, tags: { name: 'Halle (Saale)' }, members: [{ type: 'way', role: 'outer', geometry: ring.map(([lon, lat]) => ({ lon, lat })) }] }] };
 
-function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, failOn = {} } = {}) {
+function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, failOn = {}, links = {}, chownError = null } = {}) {
   const calls = { fetch: [], written: null, writes: [], out: [], err: [] };
   const failures = {};
   return {
@@ -45,11 +45,24 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
         calls.read = path;
         return text;
       },
-      writeFile: async (path, data) => {
-        failures[path] = (failures[path] || 0) + 1;
-        if (failures[path] <= (failOn[path] || 0)) throw new Error('ENOSPC: no space left on device');
-        calls.writes.push({ path, data });
-        if (path === calls.read) calls.written = { path, data };
+      writeFile: async (path, data, opts) => {
+        const key = path.endsWith('.tmp') ? 'tmp' : path;
+        failures[key] = (failures[key] || 0) + 1;
+        if (failures[key] <= (failOn[key] || 0)) throw new Error('ENOSPC: no space left on device');
+        calls.writes.push({ path, data, opts });
+      },
+      realpath: async (path) => links[path] || path,
+      stat: async () => ({ mode: 0o100640, uid: 1001, gid: 33 }),
+      chown: async (path, uid, gid) => {
+        if (chownError) throw chownError;
+        calls.chown = { path, uid, gid };
+      },
+      chmod: async (path, mode) => {
+        calls.chmod = { path, mode };
+      },
+      rename: async (from, to) => {
+        calls.renamed = { from, to };
+        calls.written = { path: to, data: calls.writes.find((w) => w.path === from).data };
       },
       rm: async (path) => {
         calls.removed = path;
@@ -61,34 +74,42 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
 }
 
 describe('npm run zone', () => {
-  it('saves a backup, then writes the settings file in place (owner, rights and links stay) and removes the backup', async () => {
+  it('replaces the settings file atomically and keeps mode, owner and group', async () => {
     const { calls, io } = env();
     expect(await main(['zone3', '62638'], io)).toBe(0);
-    expect(calls.writes.map((w) => w.path)).toEqual(['public/config.json.bak', 'public/config.json']);
-    expect(calls.writes[0].data).toBe(config);
-    expect(calls.removed).toBe('public/config.json.bak');
+    const tmp = calls.writes[0].path;
+    expect(tmp).toMatch(/^public\/config\.json\.\d+\.tmp$/);
+    expect(calls.writes[0].opts).toEqual({ flag: 'wx', mode: 0o600 });
+    expect(calls.chown).toEqual({ path: tmp, uid: 1001, gid: 33 });
+    expect(calls.chmod).toEqual({ path: tmp, mode: 0o640 });
+    expect(calls.renamed).toEqual({ from: tmp, to: 'public/config.json' });
+    expect(calls.writes).toHaveLength(1);
   });
 
-  it('restores the old content when writing fails', async () => {
-    const { calls, io } = env({ failOn: { 'public/config.json': 1 } });
+  it('replaces the target of a symbolic link', async () => {
+    const { calls, io } = env({ links: { 'dist/config.json': '/srv/ap-map/config.json' } });
+    expect(await main(['zone3', '62638', '--datei', 'dist/config.json'], io)).toBe(0);
+    expect(calls.writes[0].path).toMatch(/^\/srv\/ap-map\/config\.json\.\d+\.tmp$/);
+    expect(calls.renamed.to).toBe('/srv/ap-map/config.json');
+  });
+
+  it('leaves the settings file untouched when writing fails', async () => {
+    const { calls, io } = env({ failOn: { tmp: 1 } });
     expect(await main(['zone3', '62638'], io)).toBe(1);
     expect(calls.err.join('\n')).toBe('Fehler: ENOSPC: no space left on device public/config.json wurde nicht geändert.');
-    expect(calls.writes.at(-1)).toEqual({ path: 'public/config.json', data: config });
-    expect(calls.removed).toBe('public/config.json.bak');
+    expect(calls.renamed).toBeUndefined();
+    expect(calls.removed).toMatch(/^public\/config\.json\.\d+\.tmp$/);
   });
 
-  it('points to the backup when even restoring fails', async () => {
-    const { calls, io } = env({ failOn: { 'public/config.json': 2 } });
+  it('refuses to replace the settings file when owner or group cannot be kept', async () => {
+    const { calls, io } = env({ chownError: new Error('EPERM: operation not permitted') });
     expect(await main(['zone3', '62638'], io)).toBe(1);
-    expect(calls.err.join('\n')).toBe('Fehler: ENOSPC: no space left on device Die bisherige Fassung liegt in public/config.json.bak.');
-    expect(calls.removed).toBeUndefined();
-  });
-
-  it('does not touch the settings file when the backup cannot be written', async () => {
-    const { calls, io } = env({ failOn: { 'public/config.json.bak': 1 } });
-    expect(await main(['zone3', '62638'], io)).toBe(1);
-    expect(calls.writes).toEqual([]);
-    expect(calls.err.join('\n')).toContain('public/config.json wurde nicht geändert.');
+    expect(calls.err.join('\n')).toBe(
+      'Fehler: Besitzer/Gruppe von public/config.json lassen sich nicht übernehmen (EPERM: operation not permitted). ' +
+        'Als Besitzer der Datei ausführen. public/config.json wurde nicht geändert.',
+    );
+    expect(calls.renamed).toBeUndefined();
+    expect(calls.removed).toBe(calls.writes[0].path);
   });
 
   it('downloads the relation and writes it into the zone', async () => {
