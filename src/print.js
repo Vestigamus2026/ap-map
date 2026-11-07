@@ -1,5 +1,5 @@
 import './print.css';
-import { loadConfig } from './lib/config.js';
+import { loadConfig, zoneCredit } from './lib/config.js';
 import { createMap } from './map.js';
 import { PRINT_MARGIN_MM, paperSize, pageCss, loadLastSearch, legendEntries, pngFileName } from './lib/print.js';
 
@@ -54,7 +54,9 @@ function legendItem(entry) {
 }
 $('legend').replaceChildren(...legendEntries(colors, last, Object.keys(config.zones)).map(legendItem));
 
-const map = createMap($('printmap'), { zones: config.zones, start, colors, widths: config.widths, print: true });
+const credit = zoneCredit(config.zoneSources);
+$('zone_credit').textContent = credit;
+const map = createMap($('printmap'), { zones: config.zones, start, colors, widths: config.widths, print: true, zoneCredit: credit });
 map.setStart(start);
 const fitPoints = [start];
 if (last) {

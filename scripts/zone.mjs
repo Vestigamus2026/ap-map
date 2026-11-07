@@ -64,7 +64,9 @@ export async function main(argv, io) {
   try {
     const zone = zoneFromRelation(await res.json(), { tolerance: args.tolerance });
     const text = await io.readFile(args.file, 'utf8');
-    const out = updateConfigZone(text, args.zone, zone.rings);
+    const today = (io.today ?? (() => new Date().toISOString().slice(0, 10)))();
+    const source = `© OpenStreetMap-Mitwirkende (ODbL), Relation ${args.id} ${zone.name}, Stand ${today}`;
+    const out = updateConfigZone(text, args.zone, zone.rings, source);
     await save(io, args.file, out);
     io.log(
       `${args.zone} ← ${zone.name} (Relation ${args.id}): ${zone.before} → ${zone.after} Punkte ` +

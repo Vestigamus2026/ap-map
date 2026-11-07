@@ -12,12 +12,15 @@ import { fromLonLat } from 'ol/proj.js';
 import { boundingExtent, containsCoordinate, extend } from 'ol/extent.js';
 import { Style, Stroke, Fill, Icon } from 'ol/style.js';
 import { defaults as defaultControls, ScaleLine, Control } from 'ol/control.js';
+import { DEFAULT_ZONE_SOURCE } from './lib/config.js';
 
 const ring = (points) => points.map((p) => fromLonLat(p));
 const fill = ({ border, fill: fillColor }, width) => new Style({ stroke: new Stroke({ color: border, width }), fill: new Fill({ color: fillColor }) });
 const icon = (src, anchor, anchorXUnits, zIndex) =>
   new Style({ image: new Icon({ src, anchor, anchorXUnits, anchorYUnits: 'fraction' }), zIndex });
 const line = (color, width, zIndex) => new Style({ stroke: new Stroke({ color, width }), zIndex });
+
+const escapeHtml = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 function vectorLayer(style, attributions) {
   const source = new VectorSource({ attributions });
@@ -38,7 +41,7 @@ class FitZonesControl extends Control {
   }
 }
 
-export function createMap(target, { zones: zoneRings, start, colors, widths, print = false }) {
+export function createMap(target, { zones: zoneRings, start, colors, widths, print = false, zoneCredit = `Zonendaten: ${DEFAULT_ZONE_SOURCE}` }) {
   const present = ['zone1', 'zone2', 'zone3'].filter((z) => zoneRings[z]);
   const polygons = (polys) => new MultiPolygon(polys.map((p) => p.map(ring)));
   const zoneGeometry = polygons(zoneRings[present.at(-1)].map((r) => [r]));
@@ -60,7 +63,7 @@ export function createMap(target, { zones: zoneRings, start, colors, widths, pri
     shortest: vectorLayer(line(colors.shortestRoute, widths.shortestRoute, 101)),
     fastest: vectorLayer(line(colors.fastestRoute, widths.fastestRoute, 100)),
   };
-  const destination = vectorLayer(icon('img/finish_flag.png', [0.333, 0.95], 'fraction', 1000), 'Zonendaten: Januar 2015, assistance partner GmbH & Co. KG');
+  const destination = vectorLayer(icon('img/finish_flag.png', [0.333, 0.95], 'fraction', 1000), escapeHtml(zoneCredit));
   const startMarker = vectorLayer(icon('img/marker_start.png', [8, 1], 'pixels', 100));
   const gpsMarker = vectorLayer(icon('img/marker_pos.png', [14, 1], 'pixels', 100));
 

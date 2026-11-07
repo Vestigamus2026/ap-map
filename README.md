@@ -27,6 +27,7 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `widths.shortestRoute`, `widths.fastestRoute` | Linienbreite der Routen in Pixeln |
 | `zones.zone1` | Pflicht: Grenze von Zone 1 als Liste von Punkten `[Länge, Breite]` oder als Liste solcher Umrisse (siehe unten) |
 | `zones.zone2`, `zones.zone3` | optional, Aufbau wie `zones.zone1` |
+| `zoneSources.zone1` … `zoneSources.zone3` | Herkunft der Zonendaten für Credits, Kartenhinweis und Druckansicht, optional; fehlt sie, steht dort „Januar 2015, assistance partner GmbH & Co. KG“. `npm run zone` trägt beim Import z. B. „© OpenStreetMap-Mitwirkende (ODbL), Relation 62638 Halle (Saale), Stand 2026-11-07“ ein und entfernt den Eintrag beim Löschen. |
 
 Farben und Breiten sind optional; fehlende Werte nehmen die bisherigen Standardwerte.
 
