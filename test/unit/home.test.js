@@ -61,4 +61,20 @@ describe('extentAround', () => {
     expect(west).toBeCloseTo(11.2785, 3);
     expect(east).toBeCloseTo(12.7215, 3);
   });
+
+  it('rounds outwards, so even a tiny radius gives a real area around the position', () => {
+    const [[north, west], [south, east]] = extentAround([12, 51.5], 0.001);
+    expect(north).toBeGreaterThan(51.5);
+    expect(south).toBeLessThan(51.5);
+    expect(west).toBeLessThan(12);
+    expect(east).toBeGreaterThan(12);
+  });
+
+  it('stops at the edges of the coordinate range', () => {
+    expect(extentAround([179.9, 52], 50)[1][1]).toBe(180);
+    const [[north, west], [south, east]] = extentAround([0, 89.9], 50);
+    expect([north, west, east]).toEqual([90, -180, 180]);
+    expect(south).toBeLessThan(89.9);
+    expect(() => updateConfigHome(text, [179.9, 52], extentAround([179.9, 52], 50))).not.toThrow();
+  });
 });

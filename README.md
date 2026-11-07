@@ -134,14 +134,14 @@ home ← Delitzscher Straße 53, 06112 Halle (Saale) [11.9997142, 51.4789839], g
 ```
 
 Mit `--umkreis` wird zusätzlich `preferredExtent` (das bevorzugte Suchgebiet der Adresssuche) auf ein Rechteck
-mit so vielen Kilometern Abstand um die neue Startposition gesetzt:
+mit mindestens so vielen Kilometern Abstand um die neue Startposition gesetzt (am Rand des Koordinatenbereichs abgeschnitten):
 
 ```bash
 npm run home -- "53 Delitzscher Str., 06112 Halle" --umkreis 50
 ```
 
 ```text
-preferredExtent ← 50 km um die Startposition: [[51.9281,11.2785],[51.0298,12.7209]]
+preferredExtent ← 50 km um die Startposition: [[51.9282,11.2785],[51.0298,12.7209]]
 ```
 
 Statt einer Adresse gehen auch Koordinaten `"Breite, Länge"`, z. B. `npm run home -- "51.4789839, 11.9997142"`.
