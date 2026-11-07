@@ -1,4 +1,5 @@
 import { parseConfig } from './config.js';
+import { inRegion } from './region.js';
 
 export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
@@ -8,8 +9,11 @@ const fail = (msg) => {
 };
 
 export function overpassQuery(id) {
-  if (!/^[1-9]\d*$/.test(String(id))) fail('Die Relations-ID muss eine positive ganze Zahl sein.');
-  return `[out:json][timeout:60];relation(${id});out geom;`;
+  const ids = [].concat(id).map(String);
+  if (!ids.length || !ids.every((i) => /^[1-9]\d*$/.test(i))) fail('Die Relations-ID muss eine positive ganze Zahl sein.');
+  return ids.length === 1
+    ? `[out:json][timeout:60];relation(${ids[0]});out geom;`
+    : `[out:json][timeout:120];relation(id:${ids.join(',')});out geom;`;
 }
 
 const same = (a, b) => a[0] === b[0] && a[1] === b[1];
@@ -32,18 +36,50 @@ function joinRings(lines) {
   return rings;
 }
 
+const wayMembers = (rel) =>
+  (rel.members || []).filter((m) => m.type === 'way' && Array.isArray(m.geometry) && m.geometry.length > 1);
+const line = (m) => m.geometry.map(({ lon, lat }) => [lon, lat]);
+const relName = (rel) => rel.tags?.name || `Relation ${rel.id}`;
+
+function ringsOf(rel) {
+  const ways = wayMembers(rel);
+  const outer = joinRings(ways.filter((m) => m.role !== 'inner').map(line));
+  if (!outer.length) fail('Die Relation hat keinen Umriss.');
+  return { name: relName(rel), outer, inner: joinRings(ways.filter((m) => m.role === 'inner').map(line)) };
+}
+
 export function relationRings(json) {
   const rel = json?.elements?.find((e) => e.type === 'relation');
   if (!rel) fail('Relation wurde nicht gefunden.');
-  const ways = (rel.members || []).filter((m) => m.type === 'way' && Array.isArray(m.geometry) && m.geometry.length > 1);
-  const line = (m) => m.geometry.map(({ lon, lat }) => [lon, lat]);
-  const outer = joinRings(ways.filter((m) => m.role !== 'inner').map(line));
-  if (!outer.length) fail('Die Relation hat keinen Umriss.');
-  return {
-    name: rel.tags?.name || `Relation ${rel.id}`,
-    outer,
-    inner: joinRings(ways.filter((m) => m.role === 'inner').map(line)),
-  };
+  return ringsOf(rel);
+}
+
+const midpoints = (pts) => pts.slice(1).map((p, i) => [(p[0] + pts[i][0]) / 2, (p[1] + pts[i][1]) / 2]);
+
+// Mehrere Relationen zu einer Fläche vereinigen: Wege, die in mehreren Relationen vorkommen, sind
+// gemeinsame Grenzen und entfallen. Die übrigen Wege ergeben die Umrisse; Löcher folgen aus der
+// Gerade-Ungerade-Regel, daher spielen die Rollen outer/inner keine Rolle mehr.
+function mergedRings(rels) {
+  const count = new Map();
+  for (const r of rels) for (const ref of new Set(wayMembers(r).map((m) => m.ref))) count.set(ref, (count.get(ref) || 0) + 1);
+  const own = (r) => wayMembers(r).filter((m) => count.get(m.ref) === 1);
+  const regions = rels.map((r) => {
+    const { outer, inner } = ringsOf(r);
+    return [...outer, ...inner];
+  });
+  rels.forEach((r, i) => {
+    const points = own(r).flatMap((m) => midpoints(line(m)));
+    const j = regions.findIndex((rings, k) => k !== i && points.some((p) => inRegion(rings, p)));
+    if (j >= 0) {
+      fail(
+        `Relation ${r.id} (${relName(r)}) überlappt Relation ${rels[j].id} (${relName(rels[j])}); ` +
+          'die Relationen dürfen sich nur an den Grenzen berühren.',
+      );
+    }
+  });
+  const rings = joinRings(rels.flatMap((r) => own(r).map(line)));
+  if (!rings.length) fail('Die Relationen ergeben zusammen keine Fläche.');
+  return rings;
 }
 
 // Abstand von p zur Strecke a-b in Metern (lokale Projektion, für Zonengrößen ausreichend genau).
@@ -95,12 +131,41 @@ export function simplifyRing(ring, toleranceM) {
 
 const round = (v) => Math.round(v * 1e7) / 1e7;
 
-export function zoneFromRelation(json, { tolerance = 20 } = {}) {
-  const { name, outer, inner } = relationRings(json);
-  const all = [...outer, ...inner];
+function relationsOf(json, ids) {
+  if (!ids) {
+    const rel = json?.elements?.find((e) => e.type === 'relation');
+    return rel ? [rel] : fail('Relation wurde nicht gefunden.');
+  }
+  return ids.map(
+    (id) =>
+      json?.elements?.find((e) => e.type === 'relation' && String(e.id) === String(id)) ||
+      fail(`Relation ${id} wurde nicht gefunden.`),
+  );
+}
+
+export function zoneFromRelation(json, { tolerance = 20, ids } = {}) {
+  const rels = relationsOf(json, ids);
+  let all;
+  let holes;
+  if (rels.length === 1) {
+    const { outer, inner } = ringsOf(rels[0]);
+    all = [...outer, ...inner];
+    holes = inner.length;
+  } else {
+    all = mergedRings(rels);
+    holes = all.filter((r, i) => all.filter((o, k) => k !== i && inRegion([o], midpoints(r)[0])).length % 2).length;
+  }
   const rings = all.map((r) => simplifyRing(r, tolerance).map(([x, y]) => [round(x), round(y)]));
   const count = (rs) => rs.reduce((n, r) => n + r.length, 0);
-  return { name, rings, before: count(all), after: count(rings), parts: outer.length, holes: inner.length };
+  return {
+    name: rels.map(relName).join(' + '),
+    relations: rels.map((r) => ({ id: String(r.id), name: relName(r) })),
+    rings,
+    before: count(all),
+    after: count(rings),
+    parts: all.length - holes,
+    holes,
+  };
 }
 
 const pointLines = (ring, indent) => ring.map(([x, y]) => `${indent}  [${x},${y}]`).join(',\n');

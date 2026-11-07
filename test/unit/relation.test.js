@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { parseConfig } from '../../src/lib/config.js';
+import { inRegion } from '../../src/lib/region.js';
 import {
   overpassQuery,
   relationRings,
@@ -25,9 +26,13 @@ describe('overpassQuery', () => {
     expect(q).toContain('relation(62638)');
     expect(q).toContain('out geom');
   });
+  it('asks for several relations in one request', () => {
+    expect(overpassQuery([62473, 62638])).toContain('relation(id:62473,62638)');
+  });
   it('rejects ids that are not positive integers', () => {
     expect(() => overpassQuery('62638; out')).toThrow(RelationError);
     expect(() => overpassQuery(0)).toThrow(RelationError);
+    expect(() => overpassQuery([62473, '1;out'])).toThrow(RelationError);
   });
 });
 
@@ -223,5 +228,78 @@ describe('deleteConfigZone', () => {
     expect(() => deleteConfigZone(txt(all), 'zone1')).toThrow('Zone 1 kann nicht gelöscht werden; sie muss immer angegeben werden.');
     expect(() => deleteConfigZone(txt(all), 'zone2')).toThrow('Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen.');
     expect(() => deleteConfigZone(txt({ zone1: all.zone1 }), 'zone3')).toThrow('"zones.zone3" ist nicht vorhanden.');
+  });
+});
+
+describe('zoneFromRelation with several relations', () => {
+  const w = (ref, pts, role = 'outer') => ({ type: 'way', ref, role, geometry: geom(pts) });
+  const rel = (id, name, members) => ({ type: 'relation', id, tags: { name }, members });
+  const json = (...rels) => ({ elements: rels });
+  // Quadrat aus zwei Wegen: rechte Kante (ref+1) und der Rest (ref)
+  const split = (x, y, d, ref, role = 'outer') => [
+    w(ref, [[x + d, y + d], [x, y + d], [x, y], [x + d, y]], role),
+    w(ref + 1, [[x + d, y], [x + d, y + d]], role),
+  ];
+
+  it('merges neighbouring relations into one area without the shared border', () => {
+    const a = rel(1, 'A', split(13, 52, 1, 10));
+    const b = rel(2, 'B', [w(11, [[14, 52], [14, 53]]), w(12, [[14, 53], [15, 53], [15, 52], [14, 52]])]);
+    const z = zoneFromRelation(json(a, b), { tolerance: 0, ids: ['1', '2'] });
+    expect(z.name).toBe('A + B');
+    expect(z.relations).toEqual([{ id: '1', name: 'A' }, { id: '2', name: 'B' }]);
+    expect(z.rings).toHaveLength(1);
+    expect([z.parts, z.holes]).toEqual([1, 0]);
+    expect(inRegion(z.rings, [13.5, 52.5])).toBe(true);
+    expect(inRegion(z.rings, [14.5, 52.5])).toBe(true);
+    expect(inRegion(z.rings, [15.5, 52.5])).toBe(false);
+  });
+
+  it('fills a hole with the relation that lies in it (e.g. Saalekreis + Halle)', () => {
+    const outer = rel(1, 'Saalekreis', [w(20, square(13, 52, 1)), w(21, square(13.4, 52.4, 0.2), 'inner')]);
+    const city = rel(2, 'Halle (Saale)', [w(21, square(13.4, 52.4, 0.2))]);
+    const z = zoneFromRelation(json(outer, city), { tolerance: 0, ids: ['1', '2'] });
+    expect(z.rings).toEqual([square(13, 52, 1)]);
+    expect([z.parts, z.holes]).toEqual([1, 0]);
+    expect(inRegion(z.rings, [13.5, 52.5])).toBe(true);
+  });
+
+  it('keeps holes and exclaves that are not filled', () => {
+    const a = rel(1, 'A', [...split(13, 52, 1, 30), w(32, square(13.2, 52.2, 0.2), 'inner'), w(33, square(16, 52, 0.5))]);
+    const b = rel(2, 'B', [w(31, [[14, 52], [14, 53]]), w(34, [[14, 53], [15, 53], [15, 52], [14, 52]])]);
+    const z = zoneFromRelation(json(a, b), { tolerance: 0, ids: ['1', '2'] });
+    expect([z.parts, z.holes]).toEqual([2, 1]);
+    expect(inRegion(z.rings, [13.3, 52.3])).toBe(false);
+    expect(inRegion(z.rings, [16.2, 52.2])).toBe(true);
+    expect(inRegion(z.rings, [14.5, 52.5])).toBe(true);
+  });
+
+  it('works for more than 15 relations in a row', () => {
+    const xs = (i) => Math.round((13 + i * 0.1) * 10) / 10;
+    const rels = Array.from({ length: 20 }, (_, i) => {
+      const [x, x2] = [xs(i), xs(i + 1)];
+      return rel(i + 1, `R${i + 1}`, [
+        w(100 + i, [[x, 52], [x, 52.1]]),
+        w(200 + i, [[x, 52.1], [x2, 52.1]]),
+        w(100 + i + 1, [[x2, 52.1], [x2, 52]]),
+        w(300 + i, [[x2, 52], [x, 52]]),
+      ]);
+    });
+    const z = zoneFromRelation(json(...rels), { tolerance: 0, ids: rels.map((r) => String(r.id)) });
+    expect(z.rings).toHaveLength(1);
+    expect(inRegion(z.rings, [14.95, 52.05])).toBe(true);
+  });
+
+  it('refuses relations that overlap instead of only touching', () => {
+    const a = rel(1, 'A', [w(40, square(13, 52, 1))]);
+    const b = rel(2, 'B', [w(41, square(13.6, 52.3, 1))]);
+    expect(() => zoneFromRelation(json(a, b), { tolerance: 0, ids: ['1', '2'] }))
+      .toThrow('Relation 1 (A) überlappt Relation 2 (B); die Relationen dürfen sich nur an den Grenzen berühren.');
+    const inside = rel(3, 'C', [w(42, square(13.4, 52.4, 0.2))]);
+    expect(() => zoneFromRelation(json(a, inside), { tolerance: 0, ids: ['1', '3'] })).toThrow('überlappt');
+  });
+
+  it('names a relation that is missing from the download', () => {
+    const a = rel(1, 'A', [w(40, square(13, 52, 1))]);
+    expect(() => zoneFromRelation(json(a), { tolerance: 0, ids: ['1', '2'] })).toThrow('Relation 2 wurde nicht gefunden.');
   });
 });

@@ -152,6 +152,24 @@ describe('npm run zone', () => {
     expect(calls.out.join('\n')).toContain('zone3 ← Halle (Saale) (Relation 62638): 5 → 5 Punkte');
   });
 
+  it('merges several relations into one zone with a single download', async () => {
+    const sq = (x, y, d) => [[x, y], [x + d, y], [x + d, y + d], [x, y + d], [x, y]].map(([lon, lat]) => ({ lon, lat }));
+    const hole = { type: 'way', ref: 2, role: 'inner', geometry: sq(13.35, 52.35, 0.3) };
+    const both = { elements: [
+      { type: 'relation', id: 62473, tags: { name: 'Saalekreis' }, members: [{ type: 'way', ref: 1, role: 'outer', geometry: sq(13.2, 52.2, 0.6) }, hole] },
+      { type: 'relation', id: 62638, tags: { name: 'Halle (Saale)' }, members: [{ ...hole, role: 'outer' }] },
+    ] };
+    const { calls, io } = env({ response: { ok: true, status: 200, json: async () => both } });
+    io.today = () => '2026-11-07';
+    expect(await main(['zone2', '62473', 'https://www.openstreetmap.org/relation/62638'], io)).toBe(0);
+    expect(calls.fetch).toHaveLength(1);
+    expect(new URLSearchParams(calls.fetch[0].init.body).get('data')).toContain('relation(id:62473,62638)');
+    const written = JSON.parse(calls.written.data);
+    expect(written.zones.zone2).toEqual([[13.2, 52.2], [13.8, 52.2], [13.8, 52.8], [13.2, 52.8], [13.2, 52.2]]);
+    expect(written.zoneSources.zone2).toBe('© OpenStreetMap-Mitwirkende (ODbL), Relationen 62473 Saalekreis, 62638 Halle (Saale), Stand 2026-11-07');
+    expect(calls.out.join('\n')).toContain('zone2 ← Saalekreis + Halle (Saale) (Relationen 62473, 62638): 5 → 5 Punkte');
+  });
+
   it('accepts a relation URL, another file, tolerance and server', async () => {
     const { calls, io } = env();
     const args = ['zone3', 'https://www.openstreetmap.org/relation/62638', '--datei', 'dist/config.json', '--toleranz', '0', '--server', 'https://example.org/api/interpreter'];
@@ -169,7 +187,7 @@ describe('npm run zone', () => {
   });
 
   it('shows the usage for wrong arguments', async () => {
-    for (const args of [[], ['zone4', '1'], ['zone1'], ['zone1', 'abc'], ['zone1', '1', '--toleranz', 'x']]) {
+    for (const args of [[], ['zone4', '1'], ['zone1'], ['zone1', 'abc'], ['zone1', '1', '--toleranz', 'x'], ['zone2', 'delete', '1'], ['zone2', '1', 'abc']]) {
       const { calls, io } = env();
       expect(await main(args, io)).toBe(1);
       expect(calls.err.join('\n')).toContain('Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL>');

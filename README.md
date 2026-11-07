@@ -82,6 +82,24 @@ normale Punkte in `public/config.json` geschrieben. Die Besucher der Seite laden
 
 Die übrigen Zonen bleiben unverändert. Bei einem Fehler wird die Datei nicht geändert. Die neue Fassung wird erst vollständig neben die alte geschrieben und dann in einem Schritt ausgetauscht; Besitzer, Gruppe und Rechte bleiben erhalten. Dafür braucht der Befehl Schreibrecht im Ordner der Datei. ACLs und Hardlinks werden nicht übernommen, deshalb im Checkout (`public/config.json`) importieren und danach bauen und `dist/` kopieren, nicht direkt auf dem Server.
 
+**Mehrere Relationen zu einer Zone zusammenfassen:** Einfach alle IDs (oder Adressen) hintereinander angeben, beliebig
+viele. Sie werden in einem Download geholt und zu einer Fläche vereinigt; gemeinsame Grenzen entfallen, ein Loch, das
+von einer der anderen Relationen ausgefüllt wird, ebenfalls. Beispiel: In OpenStreetMap ist Halle (Saale) ein Loch im
+Saalekreis. Damit Zone 2 Halle einschließt (und Zone 1 = Halle darin liegt), werden beide zusammengefasst:
+
+```bash
+npm run zone -- zone1 62638
+npm run zone -- zone2 62473 62638
+```
+
+```text
+zone2 ← Saalekreis + Halle (Saale) (Relationen 62473, 62638): 4293 → 1213 Punkte (Toleranz 20 m), gespeichert in public/config.json
+18 Umrisse: 7 Teilflächen, 11 Löcher (Enklaven)
+```
+
+In den Credits steht dann „Relationen 62473 Saalekreis, 62638 Halle (Saale)“. Die Relationen dürfen sich nur an ihren
+Grenzen berühren; überlappen sie, bricht der Import mit `Relation … überlappt Relation …` ab.
+
 **Ganz neues Gebiet:** Weil jede Zone in der nächsten äußeren liegen muss, scheitert der Import, solange die
 alten Zonen 2 und 3 noch woanders liegen (`Fehler: Zone 1 muss vollständig in Zone 2 liegen.`).
 Dann zuerst die alten äußeren Zonen löschen (erst Zone 3, dann Zone 2) und von innen nach außen importieren:
@@ -119,7 +137,7 @@ zone3 gelöscht, gespeichert in public/config.json
   dann beide Zonen mit `--toleranz 0` importieren.
 - `Overpass ist nicht erreichbar` oder `Overpass antwortet mit HTTP 429/504` – später erneut versuchen oder mit `--server`
   einen anderen Server angeben.
-- `Relation wurde nicht gefunden.` – die ID prüfen; es muss eine Relation sein, kein Weg (`/way/…`) und kein Punkt (`/node/…`).
+- `Relation wurde nicht gefunden.` bzw. `Relation 123 wurde nicht gefunden.` – die ID prüfen; es muss eine Relation sein, kein Weg (`/way/…`) und kein Punkt (`/node/…`).
 - `Der Umriss der Relation ist nicht geschlossen.` – die Grenze ist in OpenStreetMap unvollständig; eine andere Relation wählen.
 
 ## Startposition aus einer Adresse setzen
