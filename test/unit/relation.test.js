@@ -7,6 +7,7 @@ import {
   zoneFromRelation,
   replaceZone,
   updateConfigZone,
+  deleteConfigZone,
   RelationError,
 } from '../../src/lib/relation.js';
 
@@ -172,5 +173,41 @@ describe('updateConfigZone', () => {
 
   it('refuses a zone that no longer fits inside the next outer zone', () => {
     expect(() => updateConfigZone(sample, 'zone1', [square(12, 51, 0.5)])).toThrow('Zone 1 muss vollständig in Zone 2 liegen.');
+  });
+});
+
+describe('deleteConfigZone', () => {
+  const sq = (a, b) => [[a, a], [b, a], [b, b], [a, b], [a, a]];
+  const txt = (zones) => `${JSON.stringify({ mapName: 'T', home: [1.5, 1.5], zones }, null, 2)}\n`;
+  const all = { zone1: sq(1, 2), zone2: sq(0, 3), zone3: sq(-1, 4) };
+
+  it('removes Zone 3 and keeps the rest of the file as it was', () => {
+    expect(deleteConfigZone(txt(all), 'zone3')).toBe(txt({ zone1: all.zone1, zone2: all.zone2 }));
+  });
+
+  it('removes Zone 2 when there is no Zone 3', () => {
+    expect(deleteConfigZone(txt({ zone1: all.zone1, zone2: all.zone2 }), 'zone2')).toBe(txt({ zone1: all.zone1 }));
+  });
+
+  it('removes a zone that is the first entry', () => {
+    expect(deleteConfigZone(txt({ zone2: all.zone2, zone1: all.zone1 }), 'zone2')).toBe(txt({ zone1: all.zone1 }));
+  });
+
+  it('only looks at zones inside "zones", even with brackets and look-alike keys elsewhere', () => {
+    const z1 = { zone1: all.zone1 };
+    const other = (zones) =>
+      `${JSON.stringify({ note: '"zones": { "zone3": [ ] }', mapName: 'T', home: [1.5, 1.5], zones, backup: { zone3: [1, 2, 3] } }, null, 2)}\n`;
+    expect(() => deleteConfigZone(other(z1), 'zone3')).toThrow('"zones.zone3" ist nicht vorhanden.');
+    expect(deleteConfigZone(other({ ...z1, zone2: all.zone2 }), 'zone2')).toBe(other(z1));
+    const added = JSON.parse(replaceZone(other(z1), 'zone3', [all.zone3]));
+    expect(added.zones.zone3).toEqual(all.zone3);
+    expect(added.backup.zone3).toEqual([1, 2, 3]);
+    expect(added.note).toBe('"zones": { "zone3": [ ] }');
+  });
+
+  it('refuses to delete Zone 1, Zone 2 while Zone 3 exists, or a missing zone', () => {
+    expect(() => deleteConfigZone(txt(all), 'zone1')).toThrow('Zone 1 kann nicht gelöscht werden; sie muss immer angegeben werden.');
+    expect(() => deleteConfigZone(txt(all), 'zone2')).toThrow('Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen.');
+    expect(() => deleteConfigZone(txt({ zone1: all.zone1 }), 'zone3')).toThrow('"zones.zone3" ist nicht vorhanden.');
   });
 });
