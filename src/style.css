@@ -25,6 +25,13 @@ body {
 }
 .toolbar .back { margin-left: 0; margin-right: auto; }
 body:not(.gps-enabled) .toolbar.gpson, body.gps-enabled .toolbar.gpsoff { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .print-link { display: none; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .toolbar.gpson, .gps-setting { display: none; }
+  body.gps-enabled .toolbar.gpsoff { display: flex; }
+}
 .map { flex: 1; min-height: 0; background: #e5e3df; }
 .scroll { flex: 1; overflow-y: auto; padding: 0 0 20px; }
 h2 { display: flex; align-items: center; gap: 6px; margin: 14px 14px 6px; font-size: 17px; color: #4c566c; text-shadow: 0 1px 0 #fff; }

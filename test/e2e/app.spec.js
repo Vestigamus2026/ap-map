@@ -118,7 +118,7 @@ test('unknown motorway kilometre is reported', async ({ page }) => {
 });
 
 test.describe('GPS tools', () => {
-  test.use({ geolocation: { latitude: 52.3471, longitude: 14.5506 }, permissions: ['geolocation'] });
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 360, height: 640 }, geolocation: { latitude: 52.3471, longitude: 14.5506 }, permissions: ['geolocation'] });
 
   test('sets the destination from the current position', async ({ page }) => {
     await mockServices(page);
