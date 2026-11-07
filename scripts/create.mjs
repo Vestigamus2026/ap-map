@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { configUrl, parseConfig } from '../src/lib/config.js';
 
@@ -41,9 +41,12 @@ export async function main(argv, io) {
   try {
     await io.writeFile(target, text, { flag: 'wx' });
   } catch (err) {
-    io.error(err.code === 'EEXIST'
-      ? `Fehler: ${target} gibt es schon und wurde nicht geändert.`
-      : `Fehler: ${target} konnte nicht angelegt werden (${err.message}).`);
+    if (err.code === 'EEXIST') {
+      io.error(`Fehler: ${target} gibt es schon und wurde nicht geändert.`);
+      return 1;
+    }
+    await io.rm(target, { force: true }).catch(() => {});
+    io.error(`Fehler: ${target} konnte nicht angelegt werden (${err.message}).`);
     return 1;
   }
   io.log(`${target} angelegt (Kopie von ${args.from}).`);
@@ -53,5 +56,5 @@ export async function main(argv, io) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  process.exitCode = await main(process.argv.slice(2), { readFile, writeFile, log: console.log, error: console.error });
+  process.exitCode = await main(process.argv.slice(2), { readFile, writeFile, rm, log: console.log, error: console.error });
 }

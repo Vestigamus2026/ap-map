@@ -8,8 +8,8 @@ const config = `{
 }
 `;
 
-function env({ files = { 'public/config.json': config }, exists = [] } = {}) {
-  const calls = { writes: [], out: [], err: [] };
+function env({ files = { 'public/config.json': config }, exists = [], writeError = null } = {}) {
+  const calls = { writes: [], removed: [], out: [], err: [] };
   return {
     calls,
     io: {
@@ -20,7 +20,9 @@ function env({ files = { 'public/config.json': config }, exists = [] } = {}) {
       writeFile: async (path, data, opts) => {
         if (exists.includes(path)) throw Object.assign(new Error(`EEXIST: ${path}`), { code: 'EEXIST' });
         calls.writes.push({ path, data, opts });
+        if (writeError) throw writeError;
       },
+      rm: async (path, opts) => calls.removed.push({ path, opts }),
       log: (m) => calls.out.push(m),
       error: (m) => calls.err.push(m),
     },
@@ -46,6 +48,14 @@ describe('npm run create config <name>', () => {
     const { calls, io } = env({ exists: ['public/config-adac.json'] });
     expect(await main(['config', 'adac'], io)).toBe(1);
     expect(calls.err).toEqual(['Fehler: public/config-adac.json gibt es schon und wurde nicht geändert.']);
+    expect(calls.removed).toEqual([]);
+  });
+
+  it('removes a half-written file when writing fails', async () => {
+    const { calls, io } = env({ writeError: Object.assign(new Error('ENOSPC: no space left on device'), { code: 'ENOSPC' }) });
+    expect(await main(['config', 'adac'], io)).toBe(1);
+    expect(calls.removed).toEqual([{ path: 'public/config-adac.json', opts: { force: true } }]);
+    expect(calls.err).toEqual(['Fehler: public/config-adac.json konnte nicht angelegt werden (ENOSPC: no space left on device).']);
   });
 
   it('rejects names that are not letters, digits, - or _', async () => {
