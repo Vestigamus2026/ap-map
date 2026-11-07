@@ -23,6 +23,7 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `preferredExtent` | bevorzugtes Suchgebiet `[[Breite, Länge], [Breite, Länge]]`, optional |
 | `colors.zone1` … `colors.zone3` | `fill` (Fläche) und `border` (Rand), CSS-Farben wie `rgba(0, 128, 0, 0.3)` |
 | `colors.shortestRoute`, `colors.fastestRoute` | Farbe der Routen auf der Karte und im Ergebnis |
+| `printColors` | optional, Aufbau wie `colors`, gilt nur für die Druckansicht; fehlende Werte nehmen die Farbe aus `colors`. Nur den Rand färben: `"printColors": { "zone1": { "fill": "transparent", "border": "green" } }` |
 | `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln |
 | `widths.shortestRoute`, `widths.fastestRoute` | Linienbreite der Routen in Pixeln |
 | `zones.zone1` | Pflicht: Grenze von Zone 1 als Liste von Punkten `[Länge, Breite]` oder als Liste solcher Umrisse (siehe unten) |

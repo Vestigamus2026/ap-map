@@ -36,6 +36,18 @@ test('print page names the zone source from the settings file', async ({ page })
   await expect(page.locator('#sheet .sources')).not.toContainText('assistance partner');
 });
 
+test('print page uses printColors, e.g. only a coloured border for Zone 1', async ({ page }) => {
+  await mockServices(page);
+  const config = JSON.parse(await readFile('public/config.json', 'utf8'));
+  const printColors = { zone1: { fill: 'transparent', border: 'rgb(0, 0, 255)' } };
+  await page.route('**/config.json', (route) => route.fulfill({ json: { ...config, printColors } }));
+  await page.goto('/print.html');
+  const swatches = page.locator('#legend .swatch');
+  await expect(swatches.first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(swatches.first()).toHaveCSS('border-top-color', 'rgb(0, 0, 255)');
+  await expect(swatches.nth(1)).toHaveCSS('background-color', 'rgba(215, 179, 104, 0.3)');
+});
+
 test('paper size and orientation change the sheet and the @page rule', async ({ page }) => {
   await mockServices(page);
   await page.goto('/print.html');
