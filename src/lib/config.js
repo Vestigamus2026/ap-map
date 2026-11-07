@@ -55,7 +55,7 @@ const WITH_OPACITY = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|[a-z]+)\s*,\s*([+-]?(?:\d+\.?\
 
 function rgbOf(base) {
   const b = base.toLowerCase();
-  const hex = b.startsWith('#') ? b.slice(1) : NAMED_HEX[b];
+  const hex = b.startsWith('#') ? b.slice(1) : Object.hasOwn(NAMED_HEX, b) && NAMED_HEX[b];
   if (!hex) return null;
   const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex;
   return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));

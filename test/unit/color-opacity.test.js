@@ -30,6 +30,8 @@ describe('colours as "Farbe, Deckkraft"', () => {
 
   it('rejects unknown colours and wrong opacities with German messages', () => {
     expect(() => fill('reed, 0.3')).toThrow('"colors.zone1.fill" muss ein Farbwert sein.');
+    expect(() => fill('constructor, 0.5')).toThrow('"colors.zone1.fill" muss ein Farbwert sein.');
+    expect(() => fill('toString, 0.5')).toThrow('"colors.zone1.fill" muss ein Farbwert sein.');
     expect(() => fill('red, 1.5')).toThrow('"colors.zone1.fill": Die Deckkraft muss zwischen 0 und 1 (0 % bis 100 %) liegen.');
     expect(() => fill('red, 150%')).toThrow('Die Deckkraft muss zwischen 0 und 1');
   });
