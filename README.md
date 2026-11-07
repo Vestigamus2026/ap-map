@@ -21,7 +21,7 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `mapName` | Name der Karte (Fenstertitel) |
 | `home` | Startposition `[Länge, Breite]` |
 | `preferredExtent` | bevorzugtes Suchgebiet `[[Breite, Länge], [Breite, Länge]]`, optional |
-| `colors.zone1` … `colors.zone3` | `fill` (Fläche) und `border` (Rand), CSS-Farben wie `rgba(0, 128, 0, 0.3)` |
+| `colors.zone1` … `colors.zone3` | `fill` (Fläche) und `border` (Rand), CSS-Farben wie `rgba(0, 128, 0, 0.3)`; Farbname oder `#rrggbb` mit Deckkraft geht auch: `"red, 0.3"` oder `"red, 30%"` (= Rot mit 30 % Deckkraft, gilt für alle Farbwerte) |
 | `colors.shortestRoute`, `colors.fastestRoute` | Farbe der Routen auf der Karte und im Ergebnis |
 | `printColors` | optional, Aufbau wie `colors`, gilt nur für die Druckansicht; fehlende Werte nehmen die Farbe aus `colors`. Nur den Rand färben: `"printColors": { "zone1": { "fill": "transparent", "border": "green" } }` |
 | `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln |

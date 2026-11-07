@@ -48,6 +48,17 @@ test('print page uses printColors, e.g. only a coloured border for Zone 1', asyn
   await expect(swatches.nth(1)).toHaveCSS('background-color', 'rgba(215, 179, 104, 0.3)');
 });
 
+test('print page reads colours written as "Farbe, Deckkraft"', async ({ page }) => {
+  await mockServices(page);
+  const config = JSON.parse(await readFile('public/config.json', 'utf8'));
+  const printColors = { zone1: { fill: 'red, 30%', border: 'blue, 1' } };
+  await page.route('**/config.json', (route) => route.fulfill({ json: { ...config, printColors } }));
+  await page.goto('/print.html');
+  const swatch = page.locator('#legend .swatch').first();
+  await expect(swatch).toHaveCSS('background-color', 'rgba(255, 0, 0, 0.3)');
+  await expect(swatch).toHaveCSS('border-top-color', 'rgb(0, 0, 255)');
+});
+
 test('paper size and orientation change the sheet and the @page rule', async ({ page }) => {
   await mockServices(page);
   await page.goto('/print.html');
