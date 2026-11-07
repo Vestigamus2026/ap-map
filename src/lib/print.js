@@ -15,26 +15,30 @@ export function pageCss(format, orientation) {
 const isPoint = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
 const line = (points) => (Array.isArray(points) && points.length > 1 && points.every(isPoint) ? points : null);
 
-export function saveLastSearch(storage, { start, destination, label, shortest, fastest }) {
+export function lastSearchKey(configFile = 'config.json') {
+  return configFile === 'config.json' ? LAST_SEARCH_KEY : `${LAST_SEARCH_KEY}:${configFile}`;
+}
+
+export function saveLastSearch(storage, { start, destination, label, shortest, fastest }, key = LAST_SEARCH_KEY) {
   try {
-    storage.setItem(LAST_SEARCH_KEY, JSON.stringify({ start, destination, label, shortest, fastest }));
+    storage.setItem(key, JSON.stringify({ start, destination, label, shortest, fastest }));
   } catch {
     // ohne Speicher zeigt die Druckansicht nur die Zonen
   }
 }
 
-export function clearLastSearch(storage) {
+export function clearLastSearch(storage, key = LAST_SEARCH_KEY) {
   try {
-    storage.removeItem(LAST_SEARCH_KEY);
+    storage.removeItem(key);
   } catch {
     // nichts zu tun
   }
 }
 
-export function loadLastSearch(storage) {
+export function loadLastSearch(storage, key = LAST_SEARCH_KEY) {
   let raw;
   try {
-    raw = JSON.parse(storage.getItem(LAST_SEARCH_KEY));
+    raw = JSON.parse(storage.getItem(key));
   } catch {
     return null;
   }

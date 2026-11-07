@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PAPER_SIZES, paperSize, pageCss, LAST_SEARCH_KEY, saveLastSearch, loadLastSearch, clearLastSearch, legendEntries, pngFileName,
+  PAPER_SIZES, paperSize, pageCss, LAST_SEARCH_KEY, lastSearchKey, saveLastSearch, loadLastSearch, clearLastSearch, legendEntries, pngFileName,
 } from '../../src/lib/print.js';
 import { DEFAULT_COLORS } from '../../src/lib/config.js';
 
@@ -79,5 +79,24 @@ describe('PNG file name', () => {
   it('uses map name, paper and orientation and strips unsafe characters', () => {
     expect(pngFileName('Kroll APG 607', 'A3', 'landscape')).toBe('Kroll APG 607 A3 quer.png');
     expect(pngFileName('Nord/Süd: "Test"', 'A4', 'portrait')).toBe('Nord-Süd- -Test- A4 hoch.png');
+  });
+});
+
+describe('last search per settings file', () => {
+  const store = () => {
+    const m = new Map();
+    return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+  };
+
+  it('keeps the last search of each settings file apart', () => {
+    expect(lastSearchKey('config.json')).toBe(LAST_SEARCH_KEY);
+    const adac = lastSearchKey('config-adac.json');
+    expect(adac).toBe(`${LAST_SEARCH_KEY}:config-adac.json`);
+    const s = store();
+    saveLastSearch(s, { start: [13, 52], destination: [14, 52], label: 'Ziel', shortest: null, fastest: null }, adac);
+    expect(loadLastSearch(s)).toBeNull();
+    expect(loadLastSearch(s, adac).label).toBe('Ziel');
+    clearLastSearch(s, adac);
+    expect(loadLastSearch(s, adac)).toBeNull();
   });
 });

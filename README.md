@@ -32,6 +32,28 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 
 Farben und Breiten sind optional; fehlende Werte nehmen die bisherigen Standardwerte.
 
+### Mehrere Einstellungsdateien (`?config=<name>`)
+
+Weitere Einstellungsdateien liegen neben `config.json` in `public/` und heißen `config-<name>.json`,
+z. B. `public/config-adac.json` oder `public/config-ap.json`. Welche Datei die Seite lädt, bestimmt der
+Parameter `config` in der Adresse:
+
+| Adresse | geladene Datei |
+|---|---|
+| `https://<server>/` | `config.json` |
+| `https://<server>/?config=adac` | `config-adac.json` |
+| `https://<server>/?config=config-ap.json` | `config-ap.json` |
+
+- Erlaubt sind nur Buchstaben, Ziffern, `-` und `_`; andere Namen zeigen eine Fehlermeldung.
+- Der Knopf „Drucken“ übernimmt den Parameter, die Druckansicht zeigt also dieselbe Karte.
+- Die letzte Suche für die Druckansicht wird je Einstellungsdatei getrennt gespeichert.
+- Neue Datei anlegen: `npm run create config adac` legt `public/config-adac.json` als Kopie von
+  `public/config.json` an. Eine andere Vorlage, z. B. aus dem Archiv:
+  `npm run create -- config kroll --von archive/config-kroll.json`. Eine vorhandene Datei wird nie überschrieben.
+- `npm run build` übernimmt alle `public/config-*.json` nach `dist/`; nach dem Deploy aufrufen mit `?config=adac`.
+- `npm run zone` und `npm run home` ändern eine andere Datei mit `--datei`, z. B.
+  `npm run zone -- zone1 62638 --datei public/config-adac.json`.
+
 Zone 2 und Zone 3 dürfen fehlen, Zone 1 nicht. Jede Zone muss ganz in der nächsten
 vorhandenen äußeren Zone liegen (Zone 1 in Zone 2, Zone 2 in Zone 3; ohne Zone 2 Zone 1 in Zone 3).
 „Entfernung zu Zone …“ und „außerhalb Zone …“ beziehen sich immer auf die äußerste vorhandene Zone.
