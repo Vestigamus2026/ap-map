@@ -193,6 +193,18 @@ describe('deleteConfigZone', () => {
     expect(deleteConfigZone(txt({ zone2: all.zone2, zone1: all.zone1 }), 'zone2')).toBe(txt({ zone1: all.zone1 }));
   });
 
+  it('only looks at zones inside "zones", even with brackets and look-alike keys elsewhere', () => {
+    const z1 = { zone1: all.zone1 };
+    const other = (zones) =>
+      `${JSON.stringify({ note: '"zones": { "zone3": [ ] }', mapName: 'T', home: [1.5, 1.5], zones, backup: { zone3: [1, 2, 3] } }, null, 2)}\n`;
+    expect(() => deleteConfigZone(other(z1), 'zone3')).toThrow('"zones.zone3" ist nicht vorhanden.');
+    expect(deleteConfigZone(other({ ...z1, zone2: all.zone2 }), 'zone2')).toBe(other(z1));
+    const added = JSON.parse(replaceZone(other(z1), 'zone3', [all.zone3]));
+    expect(added.zones.zone3).toEqual(all.zone3);
+    expect(added.backup.zone3).toEqual([1, 2, 3]);
+    expect(added.note).toBe('"zones": { "zone3": [ ] }');
+  });
+
   it('refuses to delete Zone 1, Zone 2 while Zone 3 exists, or a missing zone', () => {
     expect(() => deleteConfigZone(txt(all), 'zone1')).toThrow('Zone 1 kann nicht gelöscht werden; sie muss immer angegeben werden.');
     expect(() => deleteConfigZone(txt(all), 'zone2')).toThrow('Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen.');

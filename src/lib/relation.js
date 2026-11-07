@@ -107,14 +107,7 @@ const zoneLines = (rings, indent) =>
     ? pointLines(rings[0], indent)
     : rings.map((r) => `${indent}  [\n${pointLines(r, `${indent}  `)}\n${indent}  ]`).join(',\n');
 
-function insertZone(text, zonesAt, zone, rings) {
-  const open = text.indexOf('{', zonesAt);
-  let depth = 0;
-  let close = open;
-  for (; close < text.length; close++) {
-    if (text[close] === '{') depth++;
-    else if (text[close] === '}' && --depth === 0) break;
-  }
+function insertZone(text, zonesAt, close, zone, rings) {
   const lineStart = text.lastIndexOf('\n', zonesAt) + 1;
   const outerIndent = text.slice(lineStart, zonesAt).match(/^\s*/)[0];
   const indent = `${outerIndent}  `;
@@ -123,26 +116,59 @@ function insertZone(text, zonesAt, zone, rings) {
   return `${before}${sep}\n${indent}"${zone}": [\n${zoneLines(rings, indent)}\n${indent}]\n${outerIndent}${text.slice(close)}`;
 }
 
-function findZone(text, zone) {
-  const zonesAt = text.search(/"zones"\s*:\s*\{/);
-  if (zonesAt < 0) fail('"zones" fehlt in der Einstellungsdatei.');
-  const re = new RegExp(`"${zone}"\\s*:\\s*\\[`, 'g');
-  re.lastIndex = zonesAt;
-  const m = re.exec(text);
-  if (!m) return { zonesAt };
-  const open = m.index + m[0].length - 1;
-  let depth = 0;
-  let close = open;
-  for (; close < text.length; close++) {
-    if (text[close] === '[') depth++;
-    else if (text[close] === ']' && --depth === 0) break;
+const skipSpace = (t, i) => {
+  while (/\s/.test(t[i])) i++;
+  return i;
+};
+
+function skipString(t, i) {
+  for (i++; t[i] !== '"'; i += t[i] === '\\' ? 2 : 1);
+  return i + 1;
+}
+
+function skipValue(t, i) {
+  if (t[i] === '"') return skipString(t, i);
+  if (t[i] !== '{' && t[i] !== '[') {
+    while (i < t.length && !/[\s,\]}]/.test(t[i])) i++;
+    return i;
   }
-  return { zonesAt, start: m.index, open, close };
+  let depth = 0;
+  for (; i < t.length; i++) {
+    if (t[i] === '"') i = skipString(t, i) - 1;
+    else if (t[i] === '{' || t[i] === '[') depth++;
+    else if ((t[i] === '}' || t[i] === ']') && --depth === 0) return i + 1;
+  }
+  return i;
+}
+
+// Direkte Einträge des Objekts, das bei `open` beginnt; `close` ist die Stelle seiner schließenden Klammer.
+function objectMembers(t, open) {
+  const members = [];
+  let i = skipSpace(t, open + 1);
+  while (t[i] === '"') {
+    const keyEnd = skipString(t, i);
+    const valueStart = skipSpace(t, skipSpace(t, keyEnd) + 1);
+    const valueEnd = skipValue(t, valueStart);
+    members.push({ key: JSON.parse(t.slice(i, keyEnd)), start: i, valueStart, valueEnd });
+    i = skipSpace(t, valueEnd);
+    if (t[i] === ',') i = skipSpace(t, i + 1);
+  }
+  return { members, close: i };
+}
+
+function findZone(text, zone) {
+  JSON.parse(text);
+  const top = skipSpace(text, 0);
+  const zones = text[top] === '{' && objectMembers(text, top).members.findLast((m) => m.key === 'zones');
+  if (!zones || text[zones.valueStart] !== '{') fail('"zones" fehlt in der Einstellungsdatei.');
+  const { members, close: zonesClose } = objectMembers(text, zones.valueStart);
+  const m = members.findLast((e) => e.key === zone);
+  return { zonesAt: zones.start, zonesClose, start: m?.start, open: m?.valueStart, close: m && m.valueEnd - 1 };
 }
 
 export function replaceZone(text, zone, rings) {
-  const { zonesAt, start, open, close } = findZone(text, zone);
-  if (start == null) return insertZone(text, zonesAt, zone, rings);
+  const { zonesAt, zonesClose, start, open, close } = findZone(text, zone);
+  if (start == null) return insertZone(text, zonesAt, zonesClose, zone, rings);
   const lineStart = text.lastIndexOf('\n', start) + 1;
   const indent = text.slice(lineStart, start).match(/^\s*/)[0];
   return `${text.slice(0, open)}[\n${zoneLines(rings, indent)}\n${indent}]${text.slice(close + 1)}`;
