@@ -146,6 +146,11 @@ test('credits list the new services', async ({ page }) => {
   await expect(about).toContainText('Valhalla');
   await expect(about).toContainText('OpenLayers');
   await expect(about).not.toContainText('MapQuest');
+  await expect(about.getByRole('listitem').filter({ hasText: 'Distanzberechnung' })).toHaveText('Distanzberechnung nach André Knieriem');
+  await expect(about.getByRole('listitem').filter({ hasText: 'Punkt-in-Polygon' })).toHaveText(
+    'Punkt-in-Polygon-Test nach W. Randolph Franklin (pnpoly), JavaScript-Fassung von Jonas Raoni Soares Silva',
+  );
+  await expect(about).not.toContainText('Polygonformeln');
   await page.goto('/#show_map');
   await expect(page.locator('#show_map .ol-attribution ul')).toContainText('Programm: © 2015, Neuaufbau 2026 KLUPEA GmbH');
 });
