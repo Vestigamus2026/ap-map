@@ -88,7 +88,9 @@ export function simplifyRing(ring, toleranceM) {
   }
   const a = douglasPeucker(ring.slice(0, far + 1), toleranceM, kx);
   const b = douglasPeucker(ring.slice(far), toleranceM, kx);
-  return a.concat(b.slice(1));
+  const simple = a.concat(b.slice(1));
+  // Umrisse kleiner als die Toleranz (winzige Ex-/Enklaven) unverändert lassen.
+  return simple.length >= 4 ? simple : ring.slice();
 }
 
 const round = (v) => Math.round(v * 1e7) / 1e7;
