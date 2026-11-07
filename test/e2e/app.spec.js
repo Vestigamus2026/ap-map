@@ -258,6 +258,22 @@ test.describe('Einstellungsdatei config.json', () => {
     },
   };
 
+  test('?config=adac loads config-adac.json and keeps it for the print page', async ({ page }) => {
+    await mockServices(page);
+    await page.route('**/config-adac.json', (route) => route.fulfill({ json: custom }));
+    await page.goto('/?config=adac');
+    await expect(page).toHaveTitle('Testgebiet Nord');
+    await expect(page.getByRole('link', { name: 'Drucken' })).toHaveAttribute('href', 'print.html?config=adac');
+    await page.goto('/print.html?config=adac');
+    await expect(page.locator('#sheet h1')).toHaveText('Testgebiet Nord');
+  });
+
+  test('an invalid ?config name shows a German error', async ({ page }) => {
+    await mockServices(page);
+    await page.goto('/?config=..%2Fsecret');
+    await expect(page.locator('.fatal')).toHaveText('Fehler in der Einstellungsdatei: Ungültiger Name der Einstellungsdatei "../secret": erlaubt sind nur Buchstaben, Ziffern, - und _.');
+  });
+
   test('shows the original zone source by default', async ({ page }) => {
     await mockServices(page);
     await page.goto('/#about');

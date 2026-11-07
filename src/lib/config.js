@@ -165,6 +165,14 @@ export function zoneCredit(sources) {
   return `Zonendaten: ${[...groups].map(([source, n]) => `Zone ${names(n)}: ${source}`).join('; ')}`;
 }
 
+export function configUrl(search = '') {
+  const name = new URLSearchParams(search).get('config');
+  if (!name) return CONFIG_URL;
+  const m = name.match(/^(?:config-)?([A-Za-z0-9_-]+)(?:\.json)?$/);
+  if (!m) throw new ConfigError(`Ungültiger Name der Einstellungsdatei "${name}": erlaubt sind nur Buchstaben, Ziffern, - und _.`);
+  return `config-${m[1]}.json`;
+}
+
 export async function loadConfig(fetchFn = fetch, url = CONFIG_URL) {
   let res;
   try {

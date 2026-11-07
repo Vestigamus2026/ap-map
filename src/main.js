@@ -8,8 +8,8 @@ import { buildResultEntries } from './lib/results.js';
 import { formatKm, formatCoordinates, formatLocation } from './lib/format.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings.js';
 import { createMap } from './map.js';
-import { loadConfig, zoneCredit } from './lib/config.js';
-import { saveLastSearch, clearLastSearch } from './lib/print.js';
+import { loadConfig, configUrl, CONFIG_URL, zoneCredit } from './lib/config.js';
+import { saveLastSearch, clearLastSearch, lastSearchKey } from './lib/print.js';
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -21,8 +21,10 @@ const storage = (() => {
 })();
 
 let config;
+let configFile;
 try {
-  config = await loadConfig();
+  configFile = configUrl(window.location.search);
+  config = await loadConfig(fetch, configFile);
 } catch (err) {
   const box = document.createElement('p');
   box.className = 'fatal';
@@ -33,6 +35,11 @@ try {
 const { mapName, home: defaultStart, preferredExtent, colors } = config;
 
 document.title = mapName;
+const searchKey = lastSearchKey(configFile);
+if (configFile !== CONFIG_URL) {
+  const name = new URLSearchParams(window.location.search).get('config');
+  document.querySelector('a[href="print.html"]').setAttribute('href', `print.html?config=${encodeURIComponent(name)}`);
+}
 const zones = createZones(config.zones);
 if (zones.outer !== 3) {
   for (const label of document.querySelectorAll('label.switch span')) label.textContent = label.textContent.replace('Zone 3', `Zone ${zones.outer}`);
@@ -160,7 +167,7 @@ async function search({ query, point, target }) {
         state.target = null;
         state.destination = null;
         map.setDestination(null);
-        clearLastSearch(storage);
+        clearLastSearch(storage, searchKey);
       }
       return;
     }
@@ -176,7 +183,7 @@ async function search({ query, point, target }) {
       label: (result.target.location && formatLocation(result.target.location)) || formatCoordinates(state.destination),
       shortest: (state.settings.route_shortest && result.shortest?.points) || null,
       fastest: (state.settings.route_fastest && result.fastest?.points) || null,
-    });
+    }, searchKey);
     if (result.motorway) {
       fillMotorways(result.motorway.section.bab, result.motorway.section.key);
       $('km').value = (Math.round(result.motorway.km * 10) / 10).toString();

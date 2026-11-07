@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseConfig, loadConfig, ConfigError, DEFAULT_COLORS, DEFAULT_WIDTHS } from '../../src/lib/config.js';
+import { parseConfig, loadConfig, configUrl, ConfigError, DEFAULT_COLORS, DEFAULT_WIDTHS } from '../../src/lib/config.js';
 
 const ring = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
 const minimal = () => ({
@@ -167,5 +167,26 @@ describe('colour check', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('configUrl (?config=<name>)', () => {
+  it('uses config.json without the parameter', () => {
+    expect(configUrl('')).toBe('config.json');
+    expect(configUrl('?x=1')).toBe('config.json');
+    expect(configUrl('?config=')).toBe('config.json');
+  });
+
+  it('loads config-<name>.json', () => {
+    expect(configUrl('?config=adac')).toBe('config-adac.json');
+    expect(configUrl('?config=config-ap.json')).toBe('config-ap.json');
+    expect(configUrl('?config=Kroll_2')).toBe('config-Kroll_2.json');
+  });
+
+  it('rejects names that could reach other files', () => {
+    for (const bad of ['../secret', 'a/b', 'https://evil.example/x', 'a b', '%2e%2e', 'a.json.bak']) {
+      expect(() => configUrl(`?config=${encodeURIComponent(bad)}`)).toThrow(ConfigError);
+    }
+    expect(() => configUrl('?config=a%2Fb')).toThrow('Ungültiger Name der Einstellungsdatei "a/b": erlaubt sind nur Buchstaben, Ziffern, - und _.');
   });
 });

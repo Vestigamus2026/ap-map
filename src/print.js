@@ -1,7 +1,7 @@
 import './print.css';
-import { loadConfig, zoneCredit } from './lib/config.js';
+import { loadConfig, configUrl, zoneCredit } from './lib/config.js';
 import { createMap } from './map.js';
-import { PRINT_MARGIN_MM, paperSize, pageCss, loadLastSearch, legendEntries, pngFileName } from './lib/print.js';
+import { PRINT_MARGIN_MM, paperSize, pageCss, loadLastSearch, lastSearchKey, legendEntries, pngFileName } from './lib/print.js';
 
 const $ = (id) => document.getElementById(id);
 const storage = (() => {
@@ -13,8 +13,10 @@ const storage = (() => {
 })();
 
 let config;
+let configFile;
 try {
-  config = await loadConfig();
+  configFile = configUrl(window.location.search);
+  config = await loadConfig(fetch, configFile);
 } catch (err) {
   const box = document.createElement('p');
   box.className = 'fatal';
@@ -23,7 +25,7 @@ try {
   throw err;
 }
 const { mapName, printColors: colors } = config;
-const last = loadLastSearch(storage);
+const last = loadLastSearch(storage, lastSearchKey(configFile));
 const start = last?.start || config.home;
 
 document.title = `${mapName} – Druckansicht`;
