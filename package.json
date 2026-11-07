@@ -13,6 +13,8 @@
     "test:e2e": "playwright test",
     "zone": "node scripts/zone.mjs",
     "home": "node scripts/home.mjs",
+    "mapname": "node scripts/mapname.mjs",
+    "color": "node scripts/color.mjs",
     "create": "node scripts/create.mjs"
   },
   "dependencies": {

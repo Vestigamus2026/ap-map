@@ -31,16 +31,18 @@ const ring = [[13.1, 52.1], [13.9, 52.1], [13.9, 52.9], [13.1, 52.9], [13.1, 52.
 const overpass = { elements: [{ type: 'relation', id: 62638, tags: { name: 'Halle (Saale)' }, members: [{ type: 'way', role: 'outer', geometry: ring.map(([lon, lat]) => ({ lon, lat })) }] }] };
 
 function env({ response = { ok: true, status: 200, json: async () => overpass }, text = config, failOn = {}, links = {}, chownError = null } = {}) {
-  const calls = { fetch: [], written: null, writes: [], out: [], err: [] };
+  const calls = { fetch: [], written: null, writes: [], out: [], err: [], sleeps: [] };
   const failures = {};
   return {
     calls,
     io: {
       fetch: async (url, init) => {
         calls.fetch.push({ url, init });
-        if (response instanceof Error) throw response;
-        return response;
+        const r = typeof response === 'function' ? response(url) : response;
+        if (r instanceof Error) throw r;
+        return r;
       },
+      sleep: async (ms) => calls.sleeps.push(ms),
       readFile: async (path) => {
         calls.read = path;
         return text;
@@ -90,6 +92,15 @@ describe('npm run zone', () => {
     expect(JSON.parse(calls.written.data).zones.zone3).toBeUndefined();
     expect(JSON.parse(calls.written.data).zones.zone2).toBeDefined();
     expect(calls.out).toEqual(['zone3 gelöscht, gespeichert in public/config.json']);
+  });
+
+  it('deleting a missing zone succeeds without writing, so setup scripts can run again', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone3', 'delete'], io)).toBe(0);
+    const again = env({ text: calls.written.data });
+    expect(await main(['zone3', 'delete'], again.io)).toBe(0);
+    expect(again.calls.writes).toEqual([]);
+    expect(again.calls.out).toEqual(['zone3 ist nicht vorhanden; public/config.json wurde nicht geändert.']);
   });
 
   it('refuses to delete Zone 2 while Zone 3 exists', async () => {
@@ -200,6 +211,39 @@ describe('npm run zone', () => {
     expect(await main(['zone1', '62638'], io)).toBe(1);
     expect(calls.err.join('\n')).toContain('Zone 1 muss vollständig in Zone 2 liegen.');
     expect(calls.written).toBeNull();
+  });
+
+  it('waits 15 s and tries the same Overpass server again when it is overloaded or unreachable', async () => {
+    const ok = { ok: true, status: 200, json: async () => overpass };
+    const answers = [{ ok: false, status: 502, json: async () => ({}) }, new Error('fetch failed'), ok];
+    const { calls, io } = env({ response: () => answers.shift() });
+    expect(await main(['zone3', '62638'], io)).toBe(0);
+    expect(calls.fetch.map((f) => f.url)).toEqual(Array(3).fill('https://overpass-api.de/api/interpreter'));
+    expect(calls.sleeps).toEqual([15000, 15000]);
+    expect(calls.out.slice(0, 2)).toEqual([
+      'Overpass antwortet mit HTTP 502. Neuer Versuch in 15 s (1 von 3) …',
+      'Overpass ist nicht erreichbar (https://overpass-api.de/api/interpreter): fetch failed. Neuer Versuch in 15 s (2 von 3) …',
+    ]);
+    expect(calls.written).not.toBeNull();
+  });
+
+  it('gives up after 3 retries and leaves the file unchanged', async () => {
+    const { calls, io } = env({ response: { ok: false, status: 429, json: async () => ({}) } });
+    expect(await main(['zone3', '62638', '--server', 'https://example.org/api'], io)).toBe(1);
+    expect(calls.fetch.map((f) => f.url)).toEqual(Array(4).fill('https://example.org/api'));
+    expect(calls.sleeps).toEqual([15000, 15000, 15000]);
+    expect(calls.err).toEqual([
+      'Overpass antwortet mit HTTP 429. Später erneut versuchen oder einen anderen Server mit --server angeben, z. B. --server https://overpass.private.coffee/api/interpreter',
+    ]);
+    expect(calls.writes).toEqual([]);
+  });
+
+  it('does not retry a wrong request', async () => {
+    const { calls, io } = env({ response: { ok: false, status: 400, json: async () => ({}) } });
+    expect(await main(['zone3', '62638'], io)).toBe(1);
+    expect(calls.fetch).toHaveLength(1);
+    expect(calls.sleeps).toEqual([]);
+    expect(calls.err.join('\n')).toContain('Overpass antwortet mit HTTP 400');
   });
 
   it('reports download problems in German', async () => {

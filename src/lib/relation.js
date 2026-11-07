@@ -2,6 +2,7 @@ import { parseConfig } from './config.js';
 import { inRegion } from './region.js';
 
 export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+export const OVERPASS_FALLBACK_URL = 'https://overpass.private.coffee/api/interpreter';
 
 export class RelationError extends Error {}
 const fail = (msg) => {
@@ -267,7 +268,7 @@ export function deleteConfigZone(text, zone) {
     fail('Zone 2 kann nicht gelöscht werden, solange Zone 3 vorhanden ist. Erst Zone 3 löschen.');
   }
   const { start, close } = findZone(text, zone);
-  if (start == null) fail(`"zones.${zone}" ist nicht vorhanden.`);
+  if (start == null) return text;
   const before = text.slice(0, start).trimEnd();
   const out = setZoneSource(
     before.endsWith(',') ? before.slice(0, -1) + text.slice(close + 1) : before + text.slice(close + 1).replace(/^\s*,/, ''),
