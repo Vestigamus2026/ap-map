@@ -66,6 +66,11 @@ describe('legend', () => {
       { kind: 'icon', label: 'Start', icon: 'img/marker_start.png' },
     ]);
   });
+  it('shows no border for zones with width 0', () => {
+    const entries = legendEntries(DEFAULT_COLORS, null, ['zone1', 'zone2'], { zone1: 0, zone2: 3 });
+    expect(entries[0].border).toBe('transparent');
+    expect(entries[1].border).toBe('rgba(215, 179, 104, 1)');
+  });
   it('adds destination and the drawn routes of the last search', () => {
     const entries = legendEntries(DEFAULT_COLORS, { destination: [1, 2], label: 'Frankfurt (Oder)', shortest: [[1, 2], [3, 4]], fastest: null });
     expect(entries.slice(4)).toEqual([

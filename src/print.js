@@ -58,7 +58,7 @@ function legendItem(entry) {
   li.append(entry.label);
   return li;
 }
-$('legend').replaceChildren(...legendEntries(colors, last, Object.keys(config.zones)).map(legendItem));
+$('legend').replaceChildren(...legendEntries(colors, last, Object.keys(config.zones), config.printWidths).map(legendItem));
 
 const credit = zoneCredit(config.zoneSources);
 $('zone_credit').textContent = credit;

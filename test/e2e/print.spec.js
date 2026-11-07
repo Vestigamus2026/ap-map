@@ -94,6 +94,12 @@ test('print page draws no zone border with printWidths 0', async ({ page }) => {
   const widthZero = await bluePixels({ fill: 'rgb(255, 0, 0)', border: 'rgb(0, 0, 255)' }, { zone1: 0 });
   const widthFour = await bluePixels({ fill: 'rgb(255, 0, 0)', border: 'rgb(0, 0, 255)' }, { zone1: 4 });
   expect(widthZero).toBe(withoutBorder);
+  await expect(page.locator('#legend .swatch').first()).toHaveCSS('border-top-color', 'rgb(0, 0, 255)');
+  await page.unroute('**/config.json');
+  await page.route('**/config.json', (route) =>
+    route.fulfill({ json: { ...config, printColors: { zone1: { fill: 'rgb(255, 0, 0)', border: 'rgb(0, 0, 255)' } }, printWidths: { zone1: 0 } } }));
+  await page.goto('/print.html');
+  await expect(page.locator('#legend .swatch').first()).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
   expect(widthFour).toBeGreaterThan(withoutBorder);
 });
 

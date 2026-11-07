@@ -52,8 +52,8 @@ export function loadLastSearch(storage, key = LAST_SEARCH_KEY) {
   };
 }
 
-export function legendEntries(colors, last, zoneNames = ['zone1', 'zone2', 'zone3']) {
-  const entries = zoneNames.map((z) => ({ kind: 'zone', label: `Zone ${z.slice(4)}`, ...colors[z] }));
+export function legendEntries(colors, last, zoneNames = ['zone1', 'zone2', 'zone3'], widths = {}) {
+  const entries = zoneNames.map((z) => ({ kind: 'zone', label: `Zone ${z.slice(4)}`, ...colors[z], ...(widths[z] === 0 && { border: 'transparent' }) }));
   entries.push({ kind: 'icon', label: 'Start', icon: 'img/marker_start.png' });
   if (!last) return entries;
   entries.push({ kind: 'icon', label: `Ziel: ${last.label}`, icon: 'img/finish_flag.png' });
