@@ -22,7 +22,7 @@ try {
   document.body.replaceChildren(box);
   throw err;
 }
-const { mapName, colors } = config;
+const { mapName, printColors: colors } = config;
 const last = loadLastSearch(storage);
 const start = last?.start || config.home;
 

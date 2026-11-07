@@ -54,18 +54,18 @@ function color(value, fallback, name) {
   return value;
 }
 
-function parseColors(raw = {}) {
-  if (!isObject(raw)) fail('"colors" muss ein Objekt sein.');
+function parseColors(raw = {}, defaults = DEFAULT_COLORS, prefix = 'colors') {
+  if (!isObject(raw)) fail(`"${prefix}" muss ein Objekt sein.`);
   const colors = {};
   for (const z of ZONES) {
     const c = raw[z] ?? {};
-    if (!isObject(c)) fail(`"colors.${z}" muss ein Objekt mit "fill" und "border" sein.`);
+    if (!isObject(c)) fail(`"${prefix}.${z}" muss ein Objekt mit "fill" und "border" sein.`);
     colors[z] = {
-      fill: color(c.fill, DEFAULT_COLORS[z].fill, `colors.${z}.fill`),
-      border: color(c.border, DEFAULT_COLORS[z].border, `colors.${z}.border`),
+      fill: color(c.fill, defaults[z].fill, `${prefix}.${z}.fill`),
+      border: color(c.border, defaults[z].border, `${prefix}.${z}.border`),
     };
   }
-  for (const r of ROUTES) colors[r] = color(raw[r], DEFAULT_COLORS[r], `colors.${r}`);
+  for (const r of ROUTES) colors[r] = color(raw[r], defaults[r], `${prefix}.${r}`);
   return colors;
 }
 
@@ -113,11 +113,13 @@ export function parseConfig(raw) {
     const [inner, outer] = [present[i - 1], present[i]];
     if (!regionInside(zones[inner], zones[outer])) fail(`Zone ${inner.slice(4)} muss vollständig in Zone ${outer.slice(4)} liegen.`);
   }
+  const colors = parseColors(raw.colors);
   return {
     mapName: raw.mapName.trim(),
     home: [raw.home[0], raw.home[1]],
     preferredExtent,
-    colors: parseColors(raw.colors),
+    colors,
+    printColors: parseColors(raw.printColors, colors, 'printColors'),
     widths: parseWidths(raw.widths),
     zones,
     zoneSources: parseZoneSources(raw.zoneSources ?? {}, present),
