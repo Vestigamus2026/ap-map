@@ -25,10 +25,29 @@ describe('printColors in config.json', () => {
   });
 });
 
+describe('printWidths in config.json', () => {
+  it('uses the screen widths when printWidths is missing', () => {
+    const { widths, printWidths } = parseConfig({ ...base, widths: { zone1: 3 } });
+    expect(printWidths).toEqual(widths);
+  });
+
+  it('overrides single print widths and keeps the screen widths for the rest', () => {
+    const { widths, printWidths } = parseConfig({ ...base, widths: { zone2: 2 }, printWidths: { zone1: 6 } });
+    expect(printWidths).toEqual({ ...widths, zone1: 6 });
+    expect(widths.zone1).toBe(1);
+  });
+
+  it('rejects wrong print widths with German messages', () => {
+    expect(() => parseConfig({ ...base, printWidths: 3 })).toThrow('"printWidths" muss ein Objekt sein.');
+    expect(() => parseConfig({ ...base, printWidths: { zone1: 'dick' } })).toThrow('"printWidths.zone1" muss eine Zahl zwischen 0 und 50 sein.');
+  });
+});
+
 describe('example config', () => {
   it('shows printColors so they can be edited', () => {
     const raw = JSON.parse(readFileSync('public/config.json', 'utf8'));
     expect(Object.keys(raw.printColors)).toEqual(['zone1', 'zone2', 'zone3', 'shortestRoute', 'fastestRoute']);
+    expect(Object.keys(raw.printWidths)).toEqual(['zone1', 'zone2', 'zone3', 'shortestRoute', 'fastestRoute']);
     expect(() => parseConfig(raw)).not.toThrow();
   });
 });

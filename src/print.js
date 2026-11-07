@@ -62,7 +62,7 @@ $('legend').replaceChildren(...legendEntries(colors, last, Object.keys(config.zo
 
 const credit = zoneCredit(config.zoneSources);
 $('zone_credit').textContent = credit;
-const map = createMap($('printmap'), { zones: config.zones, start, colors, widths: config.widths, print: true, zoneCredit: credit });
+const map = createMap($('printmap'), { zones: config.zones, start, colors, widths: config.printWidths, print: true, zoneCredit: credit });
 map.setStart(start);
 const fitPoints = [start];
 if (last) {

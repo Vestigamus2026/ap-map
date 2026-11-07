@@ -1,11 +1,13 @@
 import { readFile, writeFile, rm, rename, realpath, stat, chown, chmod } from 'node:fs/promises';
 import { save } from './save.mjs';
 import { pathToFileURL } from 'node:url';
-import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone, deleteConfigZone } from '../src/lib/relation.js';
+import { OVERPASS_URL, OVERPASS_FALLBACK_URL, overpassQuery, zoneFromRelation, updateConfigZone, deleteConfigZone } from '../src/lib/relation.js';
 
 const USAGE =
   'Aufruf: npm run zone -- <zone1|zone2|zone3> <Relations-ID oder URL> [weitere IDs …] [--toleranz Meter] [--datei public/config.json] [--server Overpass-URL]\n' +
   '   oder: npm run zone -- <zone2|zone3> delete [--datei public/config.json]';
+const RETRIES = 3;
+const RETRY_DELAY = 15000;
 const FLAGS = { '--toleranz': 'tolerance', '--datei': 'file', '--server': 'server' };
 
 function parseArgs(argv) {
@@ -32,7 +34,13 @@ export async function main(argv, io) {
   }
   if (args.delete) {
     try {
-      await save(io, args.file, deleteConfigZone(await io.readFile(args.file, 'utf8'), args.zone));
+      const text = await io.readFile(args.file, 'utf8');
+      const out = deleteConfigZone(text, args.zone);
+      if (out === text) {
+        io.log(`${args.zone} ist nicht vorhanden; ${args.file} wurde nicht geändert.`);
+        return 0;
+      }
+      await save(io, args.file, out);
       io.log(`${args.zone} gelöscht, gespeichert in ${args.file}`);
       return 0;
     } catch (err) {
@@ -41,24 +49,32 @@ export async function main(argv, io) {
     }
   }
   let res;
-  try {
-    res = await io.fetch(args.server, {
-      method: 'POST',
-      headers: {
-        'User-Agent': 'ap-map zone import (https://github.com/Vestigamus2026/ap-map)',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ data: overpassQuery(args.ids) }).toString(),
-    });
-  } catch (err) {
-    io.error(
-      `Overpass ist nicht erreichbar (${args.server}): ${err.message}. ` +
-        'Später erneut versuchen oder einen anderen Server mit --server angeben, z. B. --server https://overpass.private.coffee/api/interpreter',
-    );
+  for (let attempt = 0; ; attempt++) {
+    let problem;
+    try {
+      res = await io.fetch(args.server, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'ap-map zone import (https://github.com/Vestigamus2026/ap-map)',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ data: overpassQuery(args.ids) }).toString(),
+      });
+      if (res.ok || (res.status !== 429 && res.status < 500)) break;
+      problem = `Overpass antwortet mit HTTP ${res.status}.`;
+    } catch (err) {
+      problem = `Overpass ist nicht erreichbar (${args.server}): ${err.message}.`;
+    }
+    if (attempt < RETRIES) {
+      io.log(`${problem} Neuer Versuch in ${RETRY_DELAY / 1000} s (${attempt + 1} von ${RETRIES}) …`);
+      await io.sleep(RETRY_DELAY);
+      continue;
+    }
+    io.error(`${problem} Später erneut versuchen oder einen anderen Server mit --server angeben, z. B. --server ${OVERPASS_FALLBACK_URL}`);
     return 1;
   }
   if (!res.ok) {
-    io.error(`Overpass antwortet mit HTTP ${res.status}. Später erneut versuchen oder einen anderen Server mit --server angeben.`);
+    io.error(`Overpass antwortet mit HTTP ${res.status}. ${args.file} wurde nicht geändert.`);
     return 1;
   }
   try {
@@ -90,6 +106,7 @@ export async function main(argv, io) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = await main(process.argv.slice(2), {
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     fetch,
     readFile,
     writeFile,

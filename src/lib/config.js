@@ -92,12 +92,12 @@ function parseColors(raw = {}, defaults = DEFAULT_COLORS, prefix = 'colors') {
   return colors;
 }
 
-function parseWidths(raw = {}) {
-  if (!isObject(raw)) fail('"widths" muss ein Objekt sein.');
+function parseWidths(raw = {}, defaults = DEFAULT_WIDTHS, prefix = 'widths') {
+  if (!isObject(raw)) fail(`"${prefix}" muss ein Objekt sein.`);
   const widths = {};
   for (const key of Object.keys(DEFAULT_WIDTHS)) {
-    const w = raw[key] ?? DEFAULT_WIDTHS[key];
-    if (!isNum(w, 0, 50) || w === 0) fail(`"widths.${key}" muss eine Zahl zwischen 0 und 50 sein.`);
+    const w = raw[key] ?? defaults[key];
+    if (!isNum(w, 0, 50) || w === 0) fail(`"${prefix}.${key}" muss eine Zahl zwischen 0 und 50 sein.`);
     widths[key] = w;
   }
   return widths;
@@ -137,13 +137,15 @@ export function parseConfig(raw) {
     if (!regionInside(zones[inner], zones[outer])) fail(`Zone ${inner.slice(4)} muss vollständig in Zone ${outer.slice(4)} liegen.`);
   }
   const colors = parseColors(raw.colors);
+  const widths = parseWidths(raw.widths);
   return {
     mapName: raw.mapName.trim(),
     home: [raw.home[0], raw.home[1]],
     preferredExtent,
     colors,
     printColors: parseColors(raw.printColors, colors, 'printColors'),
-    widths: parseWidths(raw.widths),
+    widths,
+    printWidths: parseWidths(raw.printWidths ?? {}, widths, 'printWidths'),
     zones,
     zoneSources: parseZoneSources(raw.zoneSources ?? {}, present),
   };

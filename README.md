@@ -29,6 +29,7 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `printColors` | optional, Aufbau wie `colors`, gilt nur für die Druckansicht; fehlende Werte nehmen die Farbe aus `colors`. Nur den Rand färben: `"printColors": { "zone1": { "fill": "transparent", "border": "green" } }` |
 | `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln |
 | `widths.shortestRoute`, `widths.fastestRoute` | Linienbreite der Routen in Pixeln |
+| `printWidths` | optional, Aufbau wie `widths`, gilt nur für die Druckansicht; fehlende Werte nehmen die Breite aus `widths` |
 | `zones.zone1` | Pflicht: Grenze von Zone 1 als Liste von Punkten `[Länge, Breite]` oder als Liste solcher Umrisse (siehe unten) |
 | `zones.zone2`, `zones.zone3` | optional, Aufbau wie `zones.zone1` |
 | `zoneSources.zone1` … `zoneSources.zone3` | Herkunft der Zonendaten für Credits, Kartenhinweis und Druckansicht, optional; fehlt sie, steht dort „Januar 2015, assistance partner GmbH & Co. KG“. `npm run zone` trägt beim Import z. B. „© OpenStreetMap-Mitwirkende (ODbL), Relation 62638 Halle (Saale), Stand 2026-11-07“ ein und entfernt den Eintrag beim Löschen. |
@@ -153,15 +154,16 @@ zone3 gelöscht, gespeichert in public/config.json
 |---|---|
 | `--toleranz 20` | Vereinfachung in Metern (Standard 20). Punkte, die weniger als so weit von der Linie abweichen, entfallen. `--toleranz 0` übernimmt alle Punkte. |
 | `--datei dist/config.json` | andere Einstellungsdatei bearbeiten (Standard `public/config.json`) |
-| `--server <URL>` | anderer Overpass-Server, falls `https://overpass-api.de/api/interpreter` überlastet ist, z. B. `--server https://overpass.private.coffee/api/interpreter` |
+| `--server <URL>` | anderer Overpass-Server, falls `https://overpass-api.de/api/interpreter` überlastet ist, z. B. `--server https://overpass.private.coffee/api/interpreter`. Für alle Zonen einer Karte möglichst denselben Server nehmen, sonst passen die Grenzen evtl. nicht genau aufeinander. |
 
 **Häufige Fehler:**
 
 - `Zone 2 muss vollständig in Zone 3 liegen.` – die Flächen sind nicht ineinander verschachtelt. Teilen sich zwei
   Zonen eine Grenze (z. B. Stadt und Landkreis), kann die Vereinfachung die gemeinsame Grenze leicht verschieben;
   dann beide Zonen mit `--toleranz 0` importieren.
-- `Overpass ist nicht erreichbar` oder `Overpass antwortet mit HTTP 429/504` – später erneut versuchen oder mit `--server`
-  einen anderen Server angeben.
+- `Overpass ist nicht erreichbar` oder `Overpass antwortet mit HTTP 429/502/504` – der Server ist überlastet. `npm run zone`
+  wartet dann 15 s und versucht es erneut, bis zu 3-mal (`Neuer Versuch in 15 s (1 von 3) …`). Klappt es dann noch
+  nicht, später erneut versuchen oder mit `--server` einen anderen Server angeben.
 - `Relation wurde nicht gefunden.` bzw. `Relation 123 wurde nicht gefunden.` – die ID prüfen; es muss eine Relation sein, kein Weg (`/way/…`) und kein Punkt (`/node/…`).
 - `Der Umriss der Relation ist nicht geschlossen.` – die Grenze ist in OpenStreetMap unvollständig; eine andere Relation wählen.
 
@@ -193,6 +195,51 @@ Statt einer Adresse gehen auch Koordinaten `"Breite, Länge"`, z. B. `npm run ho
 Alles andere in der Datei bleibt unverändert; bei einem Fehler (z. B. `Adresse nicht gefunden`) wird sie nicht geändert.
 Wie bei `npm run zone` gehen `--datei <Datei>` (z. B. eine Datei in `archive/`) und `--server <Nominatim-URL>`.
 Danach mit `npm run dev` prüfen, bauen und `dist/` kopieren (siehe [Build und Deployment](#build-und-deployment)).
+
+## Kartenname, Farben und Linienbreiten setzen
+
+```bash
+npm run mapname -- "MeErWissen"
+npm run color -- colors --fill1 "gray, 10%" --border1 "gray" --width1 "4"
+npm run color -- printColors --fill1 "transparent" --border1 "gray" --width1 "6"
+```
+
+- `npm run mapname` setzt `mapName`.
+- `npm run color -- colors …` ändert die Farben der Karte und die Breiten in `widths`,
+  `npm run color -- printColors …` die Farben der Druckansicht und die Breiten in `printWidths`.
+- Optionen, jeweils nur für die genannte Zone: `--fill1` … `--fill3` (Fläche), `--border1` … `--border3` (Rand),
+  `--width1` … `--width3` (Randbreite in Pixeln, größer als 0 bis 50). Dazu `--shortest` und `--fastest` für die Routenfarben.
+- Farben wie in der Einstellungsdatei: Farbname, `#rrggbb`, `rgba(…)`, `transparent` oder mit Deckkraft `"gray, 10%"`.
+- Nur die angegebenen Werte ändern sich, alles andere bleibt. Bei einem ungültigen Wert gibt es eine Fehlermeldung,
+  z. B. `"colors.zone1.fill" muss ein Farbwert sein.`, und die Datei bleibt unverändert.
+- Beide Befehle kennen `--datei <Datei>` wie `npm run zone`.
+
+Ausgabe:
+
+```text
+colors.zone1.fill ← gray, 10%
+colors.zone1.border ← gray
+widths.zone1 ← 4
+gespeichert in public/config.json
+```
+
+## Karte mit einem Skript komplett einrichten
+
+`archive/meerwissen.sh` richtet die Karte „MeErWissen“ in einem Durchgang ein: Zone 3 und 2 löschen, Zone 1 (Saalekreis)
+und Zone 2 (Saalekreis + Halle) importieren, Kartenname, Startposition mit 50 km Suchgebiet, Farben und Breiten für Karte
+und Druck setzen, zum Schluss die Zonen erneut importieren.
+
+```bash
+sh archive/meerwissen.sh                                   # ändert public/config.json
+npm run create config meerwissen                           # oder als eigene Datei für ?config=meerwissen:
+sh archive/meerwissen.sh public/config-meerwissen.json
+```
+
+Ist Overpass überlastet, versucht es `npm run zone` nach je 15 s bis zu 3-mal erneut. Scheitert trotzdem ein Schritt,
+bricht das Skript ab und lässt sich einfach erneut starten.
+Es lässt sich beliebig oft ausführen: ist eine zu löschende Zone schon weg, meldet `npm run zone` nur
+`zone3 ist nicht vorhanden; … wurde nicht geändert.` und macht weiter. Für eine andere Karte die Datei kopieren
+und die Werte anpassen.
 
 ## Entwicklung
 
