@@ -266,6 +266,7 @@ test.describe('Einstellungsdatei config.json', () => {
     await expect(page.getByRole('link', { name: 'Drucken' })).toHaveAttribute('href', 'print.html?config=adac');
     await page.goto('/print.html?config=adac');
     await expect(page.locator('#sheet h1')).toHaveText('Testgebiet Nord');
+    await expect(page.getByRole('link', { name: 'Zur Karte' })).toHaveAttribute('href', 'index.html?config=adac');
   });
 
   test('an invalid ?config name shows a German error', async ({ page }) => {

@@ -1,5 +1,5 @@
 import './print.css';
-import { loadConfig, configUrl, zoneCredit } from './lib/config.js';
+import { loadConfig, configUrl, CONFIG_URL, zoneCredit } from './lib/config.js';
 import { createMap } from './map.js';
 import { PRINT_MARGIN_MM, paperSize, pageCss, loadLastSearch, lastSearchKey, legendEntries, pngFileName } from './lib/print.js';
 
@@ -29,6 +29,10 @@ const last = loadLastSearch(storage, lastSearchKey(configFile));
 const start = last?.start || config.home;
 
 document.title = `${mapName} – Druckansicht`;
+if (configFile !== CONFIG_URL) {
+  const name = new URLSearchParams(window.location.search).get('config');
+  document.querySelector('a[href="index.html"]').setAttribute('href', `index.html?config=${encodeURIComponent(name)}`);
+}
 $('title').textContent = mapName;
 $('date').textContent = `Stand: ${new Date().toLocaleDateString('de-DE')}`;
 
