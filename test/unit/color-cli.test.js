@@ -37,6 +37,14 @@ describe('npm run color', () => {
     expect(calls.out.at(-2)).toBe('printWidths.zone1 ← 6');
   });
 
+  it('accepts --width1 0 for a border without line', async () => {
+    const { calls, io } = cliEnv(config);
+    const args = ['printColors', '--fill1', 'transparent', '--border1', 'gray', '--width1', '0'];
+    expect(await main(args, io)).toBe(0);
+    expect(calls.written.printWidths).toEqual({ zone1: 0 });
+    expect(calls.out.at(-2)).toBe('printWidths.zone1 ← 0');
+  });
+
   it('handles Zones 2 and 3, the routes and --datei', async () => {
     const { calls, io } = cliEnv(config);
     const args = ['colors', '--border3', 'red', '--width2', '2.5', '--shortest', 'blue, 60%', '--fastest', 'red', '--datei', 'archive/x.json'];
@@ -51,7 +59,8 @@ describe('npm run color', () => {
     for (const [args, message] of [
       [['colors', '--fill1', 'reed'], '"colors.zone1.fill" muss ein Farbwert sein.'],
       [['printColors', '--width1', 'dick'], '"printWidths.zone1" muss eine Zahl zwischen 0 und 50 sein.'],
-      [['colors', '--width3', '0'], '"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.'],
+      [['colors', '--width3', '-1'], '"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.'],
+      [['colors', '--width3', '51'], '"widths.zone3" muss eine Zahl zwischen 0 und 50 sein.'],
     ]) {
       const { calls, io } = cliEnv(config);
       expect(await main(args, io)).toBe(1);

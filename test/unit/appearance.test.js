@@ -48,6 +48,10 @@ describe('updateConfigColors', () => {
     expect(print.widths).toBeUndefined();
   });
 
+  it('accepts width 0 for a zone border (no border line)', () => {
+    expect(JSON.parse(updateConfigColors(config, 'printColors', {}, { zone1: 0 })).printWidths).toEqual({ zone1: 0 });
+  });
+
   it('keeps existing widths of other zones', () => {
     const text = config.replace('"zones"', '"widths": { "zone2": 2, "fastestRoute": 4 },\n  "zones"');
     expect(JSON.parse(updateConfigColors(text, 'colors', {}, { zone1: 3 })).widths).toEqual({ zone2: 2, fastestRoute: 4, zone1: 3 });
@@ -55,7 +59,7 @@ describe('updateConfigColors', () => {
 
   it('rejects wrong values with the German message of the settings check', () => {
     expect(() => updateConfigColors(config, 'colors', { zone1: { fill: 'reed' } })).toThrow('"colors.zone1.fill" muss ein Farbwert sein.');
-    expect(() => updateConfigColors(config, 'printColors', {}, { zone2: 0 })).toThrow('"printWidths.zone2" muss eine Zahl zwischen 0 und 50 sein.');
+    expect(() => updateConfigColors(config, 'printColors', {}, { zone2: -1 })).toThrow('"printWidths.zone2" muss eine Zahl zwischen 0 und 50 sein.');
     expect(() => updateConfigColors(config, 'farben', {})).toThrow('Unbekannter Bereich „farben“, erlaubt sind colors und printColors.');
   });
 });

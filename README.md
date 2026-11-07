@@ -27,7 +27,7 @@ auf dem Server wirken also ohne neuen Build. Fehler in der Datei werden auf der 
 | `colors.zone1` … `colors.zone3` | `fill` (Fläche) und `border` (Rand), CSS-Farben wie `rgba(0, 128, 0, 0.3)`; Farbname oder `#rrggbb` mit Deckkraft geht auch: `"red, 0.3"` oder `"red, 30%"` (= Rot mit 30 % Deckkraft, gilt für alle Farbwerte) |
 | `colors.shortestRoute`, `colors.fastestRoute` | Farbe der Routen auf der Karte und im Ergebnis |
 | `printColors` | optional, Aufbau wie `colors`, gilt nur für die Druckansicht; fehlende Werte nehmen die Farbe aus `colors`. Nur den Rand färben: `"printColors": { "zone1": { "fill": "transparent", "border": "green" } }` |
-| `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln |
+| `widths.zone1` … `widths.zone3` | Randbreite der Zonen in Pixeln, `0` = kein Rand |
 | `widths.shortestRoute`, `widths.fastestRoute` | Linienbreite der Routen in Pixeln |
 | `printWidths` | optional, Aufbau wie `widths`, gilt nur für die Druckansicht; fehlende Werte nehmen die Breite aus `widths` |
 | `zones.zone1` | Pflicht: Grenze von Zone 1 als Liste von Punkten `[Länge, Breite]` oder als Liste solcher Umrisse (siehe unten) |
@@ -208,7 +208,7 @@ npm run color -- printColors --fill1 "transparent" --border1 "gray" --width1 "6"
 - `npm run color -- colors …` ändert die Farben der Karte und die Breiten in `widths`,
   `npm run color -- printColors …` die Farben der Druckansicht und die Breiten in `printWidths`.
 - Optionen, jeweils nur für die genannte Zone: `--fill1` … `--fill3` (Fläche), `--border1` … `--border3` (Rand),
-  `--width1` … `--width3` (Randbreite in Pixeln, größer als 0 bis 50). Dazu `--shortest` und `--fastest` für die Routenfarben.
+  `--width1` … `--width3` (Randbreite in Pixeln, 0 bis 50; `0` = kein Rand). Dazu `--shortest` und `--fastest` für die Routenfarben.
 - Farben wie in der Einstellungsdatei: Farbname, `#rrggbb`, `rgba(…)`, `transparent` oder mit Deckkraft `"gray, 10%"`.
 - Nur die angegebenen Werte ändern sich, alles andere bleibt. Bei einem ungültigen Wert gibt es eine Fehlermeldung,
   z. B. `"colors.zone1.fill" muss ein Farbwert sein.`, und die Datei bleibt unverändert.

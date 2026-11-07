@@ -97,7 +97,8 @@ function parseWidths(raw = {}, defaults = DEFAULT_WIDTHS, prefix = 'widths') {
   const widths = {};
   for (const key of Object.keys(DEFAULT_WIDTHS)) {
     const w = raw[key] ?? defaults[key];
-    if (!isNum(w, 0, 50) || w === 0) fail(`"${prefix}.${key}" muss eine Zahl zwischen 0 und 50 sein.`);
+    if (!isNum(w, 0, 50)) fail(`"${prefix}.${key}" muss eine Zahl zwischen 0 und 50 sein.`);
+    if (w === 0 && ROUTES.includes(key)) fail(`"${prefix}.${key}" muss eine Zahl größer als 0 und höchstens 50 sein.`);
     widths[key] = w;
   }
   return widths;
