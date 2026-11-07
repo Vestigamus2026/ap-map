@@ -116,7 +116,7 @@ function insertZone(text, zonesAt, close, zone, rings) {
   return `${before}${sep}\n${indent}"${zone}": [\n${zoneLines(rings, indent)}\n${indent}]\n${outerIndent}${text.slice(close)}`;
 }
 
-const skipSpace = (t, i) => {
+export const skipSpace = (t, i) => {
   while (/\s/.test(t[i])) i++;
   return i;
 };
@@ -142,7 +142,7 @@ function skipValue(t, i) {
 }
 
 // Direkte Einträge des Objekts, das bei `open` beginnt; `close` ist die Stelle seiner schließenden Klammer.
-function objectMembers(t, open) {
+export function objectMembers(t, open) {
   const members = [];
   let i = skipSpace(t, open + 1);
   while (t[i] === '"') {

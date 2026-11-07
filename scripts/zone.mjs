@@ -1,4 +1,5 @@
 import { readFile, writeFile, rm, rename, realpath, stat, chown, chmod } from 'node:fs/promises';
+import { save } from './save.mjs';
 import { pathToFileURL } from 'node:url';
 import { OVERPASS_URL, overpassQuery, zoneFromRelation, updateConfigZone, deleteConfigZone } from '../src/lib/relation.js';
 
@@ -21,27 +22,6 @@ function parseArgs(argv) {
   const tolerance = Number(opts.tolerance);
   if (!id || opts.tolerance === '' || !Number.isFinite(tolerance) || tolerance < 0) return null;
   return { ...opts, zone: pos[0], id, tolerance };
-}
-
-// Neue Fassung vollständig neben das Ziel schreiben (bei Links neben die verlinkte Datei), Besitzer, Gruppe
-// und Rechte übernehmen, dann atomar umbenennen: Leser sehen immer entweder die alte oder die neue Datei.
-async function save(io, file, out) {
-  const target = await io.realpath(file);
-  const { mode, uid, gid } = await io.stat(target);
-  const tmp = `${target}.${process.pid}.tmp`;
-  try {
-    await io.writeFile(tmp, out, { flag: 'wx', mode: 0o600 });
-    try {
-      await io.chown(tmp, uid, gid);
-    } catch (err) {
-      throw new Error(`Besitzer/Gruppe von ${file} lassen sich nicht übernehmen (${err.message}). Als Besitzer der Datei ausführen.`);
-    }
-    await io.chmod(tmp, mode & 0o7777);
-    await io.rename(tmp, target);
-  } catch (err) {
-    await io.rm(tmp, { force: true }).catch(() => {});
-    throw err;
-  }
 }
 
 export async function main(argv, io) {
