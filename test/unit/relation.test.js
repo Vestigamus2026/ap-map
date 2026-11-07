@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { parseConfig } from '../../src/lib/config.js';
 import {
   overpassQuery,
   relationRings,
@@ -81,6 +82,12 @@ describe('simplifyRing', () => {
     expect(simplifyRing(ring, 50)).not.toContainEqual([13.1, 52.0003]);
   });
 
+  it('keeps an outline smaller than the tolerance instead of collapsing it', () => {
+    // ≈ 3 m × 3 m, z. B. eine winzige Exklave
+    const tiny = square(12.18, 51.37, 0.00003);
+    expect(simplifyRing(tiny, 20)).toEqual(tiny);
+  });
+
   it('with tolerance 0 keeps every point', () => {
     const ring = [[13, 52], [13.1, 52], [13.2, 52], [13.2, 52.2], [13, 52.2], [13, 52]];
     expect(simplifyRing(ring, 0)).toEqual(ring);
@@ -97,6 +104,13 @@ describe('zoneFromRelation', () => {
     expect(z.rings[0][0]).toEqual([13.1234568, 52]);
     expect(z.after).toBe(z.rings[0].length);
     expect([z.parts, z.holes]).toEqual([1, 0]);
+  });
+
+  it('gives outlines that the settings file accepts even with tiny exclaves', () => {
+    const json = relation([way(square(13, 52, 1)), way(square(15, 52, 0.00003)), way(square(13.2, 52.2, 0.00003), 'inner')]);
+    const z = zoneFromRelation(json, { tolerance: 20 });
+    expect(z.rings.every((r) => r.length >= 4)).toBe(true);
+    expect(() => parseConfig({ mapName: 'T', home: [13.5, 52.5], zones: { zone1: z.rings } })).not.toThrow();
   });
 
   it('keeps separate areas (exclaves) and holes (enclaves) as outlines', () => {
