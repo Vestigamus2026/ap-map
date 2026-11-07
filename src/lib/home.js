@@ -1,5 +1,5 @@
 import { parseConfig } from './config.js';
-import { objectMembers, skipSpace } from './relation.js';
+import { setTopLevel } from './relation.js';
 
 const round = (v, digits) => Math.round(v * 10 ** digits) / 10 ** digits;
 const KM_PER_DEGREE = 111.32;
@@ -15,17 +15,6 @@ export function extentAround([lng, lat], km) {
     [up(lat + dLat, 90), down(lng - dLng, -180)],
     [down(lat - dLat, -90), up(lng + dLng, 180)],
   ];
-}
-
-function setTopLevel(text, key, value) {
-  const { members, close } = objectMembers(text, skipSpace(text, 0));
-  const m = members.findLast((e) => e.key === key);
-  if (m) return text.slice(0, m.valueStart) + value + text.slice(m.valueEnd);
-  const anchor = members.findLast((e) => e.key === 'home') ?? members.at(-1);
-  if (!anchor) return `${text.slice(0, close).trimEnd()}\n  "${key}": ${value}\n${text.slice(close)}`;
-  const lineStart = text.lastIndexOf('\n', anchor.start) + 1;
-  const indent = text.slice(lineStart, anchor.start).match(/^\s*/)[0];
-  return `${text.slice(0, anchor.valueEnd)},\n${indent}"${key}": ${value}${text.slice(anchor.valueEnd)}`;
 }
 
 export function updateConfigHome(text, home, extent = null) {

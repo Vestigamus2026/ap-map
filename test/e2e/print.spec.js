@@ -26,6 +26,16 @@ test('print page shows zones, home and legend without a search', async ({ page }
   expect(errors).toEqual([]);
 });
 
+test('print page names the zone source from the settings file', async ({ page }) => {
+  await mockServices(page);
+  const config = JSON.parse(await readFile('public/config.json', 'utf8'));
+  const zoneSources = { zone1: 'OSM X', zone2: 'OSM X', zone3: 'OSM X' };
+  await page.route('**/config.json', (route) => route.fulfill({ json: { ...config, zoneSources } }));
+  await page.goto('/print.html');
+  await expect(page.locator('#sheet .sources')).toContainText('Zonendaten: OSM X ·');
+  await expect(page.locator('#sheet .sources')).not.toContainText('assistance partner');
+});
+
 test('paper size and orientation change the sheet and the @page rule', async ({ page }) => {
   await mockServices(page);
   await page.goto('/print.html');

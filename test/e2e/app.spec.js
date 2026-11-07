@@ -258,6 +258,24 @@ test.describe('Einstellungsdatei config.json', () => {
     },
   };
 
+  test('shows the original zone source by default', async ({ page }) => {
+    await mockServices(page);
+    await page.goto('/#about');
+    await expect(page.locator('#zone_credit')).toHaveText('Zonendaten: Januar 2015, assistance partner GmbH & Co. KG');
+    await page.goto('/#show_map');
+    await expect(page.locator('#show_map .ol-attribution ul')).toContainText('Zonendaten: Januar 2015, assistance partner GmbH & Co. KG');
+  });
+
+  test('shows the zone sources from the file in the Credits and the map attribution', async ({ page }) => {
+    await mockServices(page);
+    await page.route('**/config.json', (route) => route.fulfill({ json: { ...custom, zoneSources: { zone1: 'OSM-Test' } } }));
+    await page.goto('/#about');
+    const credit = 'Zonendaten: Zone 1: OSM-Test; Zone 2 und 3: Januar 2015, assistance partner GmbH & Co. KG';
+    await expect(page.locator('#zone_credit')).toHaveText(credit);
+    await page.goto('/#show_map');
+    await expect(page.locator('#show_map .ol-attribution ul')).toContainText(credit);
+  });
+
   test('uses map name, home position, zones and colours from the file', async ({ page }) => {
     const calls = await mockServices(page);
     await page.route('**/config.json', (route) => route.fulfill({ json: custom }));

@@ -174,6 +174,26 @@ export function replaceZone(text, zone, rings) {
   return `${text.slice(0, open)}[\n${zoneLines(rings, indent)}\n${indent}]${text.slice(close + 1)}`;
 }
 
+export function setTopLevel(text, key, value) {
+  const { members, close } = objectMembers(text, skipSpace(text, 0));
+  const m = members.findLast((e) => e.key === key);
+  if (m) return text.slice(0, m.valueStart) + value + text.slice(m.valueEnd);
+  const anchor = members.findLast((e) => e.key === 'home') ?? members.at(-1);
+  if (!anchor) return `${text.slice(0, close).trimEnd()}\n  "${key}": ${value}\n${text.slice(close)}`;
+  const lineStart = text.lastIndexOf('\n', anchor.start) + 1;
+  const indent = text.slice(lineStart, anchor.start).match(/^\s*/)[0];
+  return `${text.slice(0, anchor.valueEnd)},\n${indent}"${key}": ${value}${text.slice(anchor.valueEnd)}`;
+}
+
+function setZoneSource(text, zone, source) {
+  const raw = JSON.parse(text);
+  if (raw.zoneSources == null && source == null) return text;
+  const next = raw.zoneSources && typeof raw.zoneSources === 'object' && !Array.isArray(raw.zoneSources) ? { ...raw.zoneSources } : {};
+  if (source == null) delete next[zone];
+  else next[zone] = source;
+  return setTopLevel(text, 'zoneSources', JSON.stringify(next));
+}
+
 export function deleteConfigZone(text, zone) {
   if (zone === 'zone1') fail('Zone 1 kann nicht gelöscht werden; sie muss immer angegeben werden.');
   if (zone === 'zone2' && JSON.parse(text).zones?.zone3 != null) {
@@ -182,15 +202,18 @@ export function deleteConfigZone(text, zone) {
   const { start, close } = findZone(text, zone);
   if (start == null) fail(`"zones.${zone}" ist nicht vorhanden.`);
   const before = text.slice(0, start).trimEnd();
-  const out = before.endsWith(',')
-    ? before.slice(0, -1) + text.slice(close + 1)
-    : before + text.slice(close + 1).replace(/^\s*,/, '');
+  const out = setZoneSource(
+    before.endsWith(',') ? before.slice(0, -1) + text.slice(close + 1) : before + text.slice(close + 1).replace(/^\s*,/, ''),
+    zone,
+    null,
+  );
   parseConfig(JSON.parse(out));
   return out;
 }
 
-export function updateConfigZone(text, zone, rings) {
-  const out = replaceZone(text, zone, rings);
+export function updateConfigZone(text, zone, rings, source) {
+  let out = replaceZone(text, zone, rings);
+  if (source !== undefined) out = setZoneSource(out, zone, source);
   parseConfig(JSON.parse(out));
   return out;
 }

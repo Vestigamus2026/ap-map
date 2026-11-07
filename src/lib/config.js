@@ -10,6 +10,8 @@ export const DEFAULT_COLORS = {
   fastestRoute: 'rgba(237, 26, 26, 0.6)',
 };
 
+export const DEFAULT_ZONE_SOURCE = 'Januar 2015, assistance partner GmbH & Co. KG';
+
 export const DEFAULT_WIDTHS = { zone1: 1, zone2: 1, zone3: 1, shortestRoute: 12, fastestRoute: 12 };
 
 const NAMED_COLORS = new Set(
@@ -118,7 +120,24 @@ export function parseConfig(raw) {
     colors: parseColors(raw.colors),
     widths: parseWidths(raw.widths),
     zones,
+    zoneSources: parseZoneSources(raw.zoneSources ?? {}, present),
   };
+}
+
+function parseZoneSources(raw, present) {
+  if (!isObject(raw)) fail('"zoneSources" muss ein Objekt sein.');
+  for (const z of ZONES) {
+    if (raw[z] != null && (typeof raw[z] !== 'string' || !raw[z].trim())) fail(`"zoneSources.${z}" muss ein Text sein.`);
+  }
+  return Object.fromEntries(present.map((z) => [z, raw[z]?.trim() || DEFAULT_ZONE_SOURCE]));
+}
+
+export function zoneCredit(sources) {
+  const groups = new Map();
+  for (const z of ZONES) if (typeof sources[z] === 'string') groups.set(sources[z], [...(groups.get(sources[z]) ?? []), z.slice(4)]);
+  if (groups.size === 1) return `Zonendaten: ${[...groups.keys()][0]}`;
+  const names = (n) => (n.length === 1 ? n[0] : `${n.slice(0, -1).join(', ')} und ${n.at(-1)}`);
+  return `Zonendaten: ${[...groups].map(([source, n]) => `Zone ${names(n)}: ${source}`).join('; ')}`;
 }
 
 export async function loadConfig(fetchFn = fetch, url = CONFIG_URL) {

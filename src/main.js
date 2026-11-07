@@ -8,7 +8,7 @@ import { buildResultEntries } from './lib/results.js';
 import { formatKm, formatCoordinates, formatLocation } from './lib/format.js';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from './lib/settings.js';
 import { createMap } from './map.js';
-import { loadConfig } from './lib/config.js';
+import { loadConfig, zoneCredit } from './lib/config.js';
 import { saveLastSearch, clearLastSearch } from './lib/print.js';
 
 const $ = (id) => document.getElementById(id);
@@ -39,7 +39,9 @@ if (zones.outer !== 3) {
 }
 const motorways = buildMotorways(motorwayData);
 const api = createGeoApi();
-const map = createMap($('map'), { zones: config.zones, start: defaultStart, colors, widths: config.widths });
+const credit = zoneCredit(config.zoneSources);
+document.getElementById('zone_credit').textContent = credit;
+const map = createMap($('map'), { zones: config.zones, start: defaultStart, colors, widths: config.widths, zoneCredit: credit });
 
 const state = { start: defaultStart, target: null, destination: null, busy: false, settings: loadSettings(storage) };
 map.setStart(state.start);

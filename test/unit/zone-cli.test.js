@@ -74,6 +74,14 @@ function env({ response = { ok: true, status: 200, json: async () => overpass },
 }
 
 describe('npm run zone', () => {
+  it('records OpenStreetMap as the source of an imported zone', async () => {
+    const { calls, io } = env();
+    expect(await main(['zone3', '62638'], { ...io, today: () => '2026-11-07' })).toBe(0);
+    expect(JSON.parse(calls.written.data).zoneSources).toEqual({
+      zone3: '© OpenStreetMap-Mitwirkende (ODbL), Relation 62638 Halle (Saale), Stand 2026-11-07',
+    });
+  });
+
   it('deletes a zone without downloading anything', async () => {
     const { calls, io } = env();
     expect(await main(['zone3', 'delete'], io)).toBe(0);
